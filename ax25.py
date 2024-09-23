@@ -243,4 +243,3 @@ class AX25:
     @staticmethod
     def from_hex(a):
         return int(a, 16)
-

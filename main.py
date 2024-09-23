@@ -6,6 +6,7 @@ from ax25 import AX25
 class RadioController:
     def __init__(self, spi, cs_pin, sdn_pin, int_pin):
         self.radio = Si4432(spi=spi, cs_pin=cs_pin, sdn_pin=sdn_pin, int_pin=int_pin)
+        self.ax25 = AX25()  # Instancia de AX25
 
     def setup_radio(self):
         """Inicializa y configura el radio SI4432."""
@@ -23,14 +24,26 @@ class RadioController:
         try:
             # Crear el ticket
             ticket = Ticket(user=user, place=place, sensor_id=sensor_id, data=data, observations=observations, day=day, hour=hour)
-            ticket_data = ticket.to_bytes()
+            ticket_data = ticket.to_bytes()  # Cambia a create_frame() según tu implementación
 
             # Crear la trama AX.25
-            ax25_frame = AX25(dest_address="DESTAD", source_address="SRCAD", payload=ticket_data)
-            frame = ax25_frame.create_frame()
+            ax25_struct = self.ax25.AX25Struct(
+                src="SRCAD",      # Cambia esto según tu configuración
+                src_ssid=0,
+                dst="DESTAD",     # Cambia esto según tu configuración
+                dst_ssid=0,
+                control=0x03,     # Control para UI
+                pid=0xF0,         # PID para no específico
+                payload=ticket_data,
+                cmd_msg=True
+            )
+            ax25_frame = ax25_struct.encode()
+
+            # Codificar en HDLC
+            hdlc_frame = self.ax25.hdlc_encode(ax25_frame)
 
             # Enviar la trama
-            if self.radio.transmit_packet(frame):
+            if self.radio.transmit_packet(hdlc_frame):
                 print("Paquete enviado correctamente.")
             else:
                 print("Error al enviar el paquete.")
@@ -67,8 +80,8 @@ def main():
         # Verifica si se ha recibido un paquete
         controller.check_for_packets()
 
-        # Si estás usando interrupciones, no necesitas este sleep
-        time.sleep(1)  # Puedes ajustar o eliminar esto dependiendo de la frecuencia de envíos/recepción
+        #acá debería implementar interupciones después
+        time.sleep(1) 
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,20 @@
 # B -> entero sin signo de 1 byte
 # 4s o 3s -> cadena de 4 o 3 bytes
 
+## Ticket creation 16 bytes ##
+## 2 bytes - user ##
+## 1 byte - place ##
+## 1 byte - sensor ID ##
+## 2 bytes - data ##
+## 4 bytes - observations ##
+## 3 bytes - day (DDMMYY) ##
+## 3 bytes - time (HHMMSS) ##
+
+# ustruct -> > big-endian, MSB se almacenan primero
+# H -> entero sin signo de 2 bytes
+# B -> entero sin signo de 1 byte
+# 4s o 3s -> cadena de 4 o 3 bytes
+
 import ustruct
 
 class Ticket:
@@ -65,3 +79,5 @@ class Ticket:
         obs_bytes += b'\x00' * (4 - len(obs_bytes))  # Rellena con ceros si es necesario
         
         return bytearray(obs_bytes)
+    
+    
