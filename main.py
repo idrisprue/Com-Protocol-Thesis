@@ -24,13 +24,13 @@ class RadioController:
         try:
             # Crear el ticket
             ticket = Ticket(user=user, place=place, sensor_id=sensor_id, data=data, observations=observations, day=day, hour=hour)
-            ticket_data = ticket.to_bytes()  # Cambia a create_frame() según tu implementación
+            ticket_data = ticket.to_bytes()
 
             # Crear la trama AX.25
             ax25_struct = self.ax25.AX25Struct(
-                src="SRCAD",      # Cambia esto según tu configuración
+                src="SRCAD",      # Cambiar Source segun corresponda
                 src_ssid=0,
-                dst="DESTAD",     # Cambia esto según tu configuración
+                dst="DESTAD",     # Cambiar Destination segun corresponda
                 dst_ssid=0,
                 control=0x03,     # Control para UI
                 pid=0xF0,         # PID para no específico
