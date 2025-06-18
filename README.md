@@ -39,11 +39,8 @@ If your Pico doesn’t have MicroPython installed:
 
 1. Open **Visual Studio Code**
 2. Go to the **Extensions Panel** (or press `Ctrl+Shift+X`)
-3. Search for:  
-   **`MicroPico`**
-4. Install the one titled:  
-   **`MicroPico`**  
-   Author: `paulober`
+3. Search for:  **`MicroPico`**
+1. Install the one titled:  **`MicroPico`**  - Author: `paulober`
 
 
 ---
@@ -64,8 +61,7 @@ Once installed, configure the extension by:
 
 1. Open the folder where your MicroPython project is located.
 2. Open the **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P` on macOS)
-3. Run:  
-   **`MicroPico: Initialize MicroPico Project`**
+3. Run:  **`MicroPico: Initialize MicroPico Project`**
 
 > This step imports stub files for autocompletion and sets up the project-specific settings in `.vscode/`.
 
@@ -98,17 +94,13 @@ print("Finished.")
 ---
 To run it:
 
-- Click the ▶️ **Run** button in the VS Code status bar  
-  **or**
-
+- Click the ▶️ **Run** button in the VS Code status bar  **or**
 - Open the Command Palette (`Ctrl+Shift+P`) and run:  **`MicroPico: Run current file on Pico`** or you can right-click on the file and search for the option
 
 
 To stop execution:
 
-- Click the 🟥 **Stop** button in the status bar  
-**or**
-
+- Click the 🟥 **Stop** button in the status bar **or**
 - Open the **Command Palette** and run: **`MicroPico: Stop execution from the command palette`**
 
 
