@@ -1,7 +1,8 @@
-"""AX.25 helpers for thesis validation.
+"""Root-level compatibility copy for Pico sync tools.
 
-The functions in this module are hardware-independent on purpose. That keeps
-the protocol steps easy to test on CPython and easy to explain in the thesis.
+Some MicroPico sync flows flatten `lib/` into the filesystem root on the Pico.
+Keeping this module at the repository root lets `main.py` and bench tests fall
+back cleanly when that happens.
 """
 
 
@@ -18,7 +19,6 @@ def _pad_callsign(callsign):
 
 
 def ax25_address(callsign, ssid, last=False):
-    """Encode one AX.25 address field entry."""
     if not isinstance(callsign, str):
         raise TypeError("callsign must be a string")
     if not isinstance(ssid, int):
@@ -32,7 +32,6 @@ def ax25_address(callsign, ssid, last=False):
     for char in normalized:
         encoded.append(ord(char) << 1)
 
-    # Bits 5 and 6 are set as required by AX.25 address encoding.
     ssid_byte = 0x60 | ((ssid & 0x0F) << 1)
     if last:
         ssid_byte |= 0x01
@@ -42,7 +41,6 @@ def ax25_address(callsign, ssid, last=False):
 
 
 def ax25_fcs(data):
-    """Compute the AX.25 FCS and return it little-endian."""
     crc = 0xFFFF
 
     for byte in data:
@@ -58,7 +56,6 @@ def ax25_fcs(data):
 
 
 def make_ui_frame(destination, dest_ssid, source, source_ssid, payload):
-    """Build an AX.25 UI frame without flags."""
     if not isinstance(payload, (bytes, bytearray)):
         raise TypeError("payload must be bytes or bytearray")
 
@@ -73,7 +70,6 @@ def make_ui_frame(destination, dest_ssid, source, source_ssid, payload):
 
 
 def byte_to_bits_lsb_first(byte):
-    """Return one byte as AX.25 transmission bits, least-significant bit first."""
     return [(byte >> bit_index) & 0x01 for bit_index in range(8)]
 
 
@@ -85,7 +81,6 @@ def bytes_to_bits_lsb_first(data):
 
 
 def bit_stuff(bits):
-    """Insert a 0 after five consecutive 1 bits in the frame body."""
     stuffed = []
     consecutive_ones = 0
 
@@ -103,7 +98,6 @@ def bit_stuff(bits):
 
 
 def make_ax25_bitstream(frame, preamble_flags=20, postamble_flags=3):
-    """Build the transmitted bitstream including flags and stuffed frame body."""
     if preamble_flags < 0 or postamble_flags < 0:
         raise ValueError("flag counts must be non-negative")
 
@@ -121,7 +115,6 @@ def make_ax25_bitstream(frame, preamble_flags=20, postamble_flags=3):
 
 
 def nrzi_encode(bits, initial_level=1):
-    """AX.25 NRZI: 0 toggles the level, 1 keeps the current level."""
     level = 1 if initial_level else 0
     levels = []
 
