@@ -6,7 +6,7 @@ This thesis project is being conducted to fulfill the requirements for the Elect
 
 Here, I share the project's code, and later I will also share the final thesis document, so I can document both the process and the results in an honest way.
 
-This repository has some older experiments too, because it reflects the actual development process. Right now, the main path of the project is focused on validating the **Raspberry Pi Pico + MX614 modem** stage before integrating a full radio module.
+Right now, the repository is focused on validating the **Raspberry Pi Pico + MX614 modem** stage before integrating a full radio module.
 
 ## Current status of the project
 
@@ -69,9 +69,6 @@ Com-Protocol-Thesis/
 │   ├── sample_data.py
 │   ├── ticket.py
 │   └── transmitter.py
-├── sx1278.py
-├── ax25.py
-├── ticket.py
 └── tests/
 ```
 
@@ -83,8 +80,6 @@ Com-Protocol-Thesis/
 - `lib/transmitter.py`: sends bits in a non-blocking way using `ticks_us()`
 - `lib/sample_data.py`: contains a small deterministic set of sample telemetry records
 - `main.py`: integrates everything on the Raspberry Pi Pico for the current hardware test
-
-The older root-level files such as `sx1278.py`, `ax25.py`, and `ticket.py` are kept because they are part of the development history of the project and may still be useful as reference.
 
 ## Telemetry dataset
 
