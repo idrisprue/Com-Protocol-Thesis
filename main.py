@@ -1,14 +1,25 @@
 """Non-blocking Raspberry Pi Pico test for the MX614 transmit path.
 
 This branch makes the Pico + MX614 validation path the default executable path.
-Older SX1278 experiments remain in the repository as legacy reference.
+
+On the Pico, some sync tools upload the `lib/` modules into the filesystem root
+instead of preserving the package directory. To keep bench testing simple, this
+entrypoint first tries the package imports and then falls back to root-level
+modules when needed.
 """
 
-from lib.ax25 import make_ax25_bitstream, make_ui_frame, nrzi_encode
-from lib.mx614 import MX614
-from lib.sample_data import SAMPLE_RECORDS, get_sample_record
-from lib.ticket import make_ticket
-from lib.transmitter import NonBlockingBitTransmitter
+try:
+    from lib.ax25 import make_ax25_bitstream, make_ui_frame, nrzi_encode
+    from lib.mx614 import MX614
+    from lib.sample_data import SAMPLE_RECORDS, get_sample_record
+    from lib.ticket import make_ticket
+    from lib.transmitter import NonBlockingBitTransmitter
+except ImportError:
+    from ax25 import make_ax25_bitstream, make_ui_frame, nrzi_encode
+    from mx614 import MX614
+    from sample_data import SAMPLE_RECORDS, get_sample_record
+    from ticket import make_ticket
+    from transmitter import NonBlockingBitTransmitter
 
 try:
     from time import ticks_diff, ticks_ms
