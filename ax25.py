@@ -1,4 +1,7 @@
-import ustruct
+try:
+    import ustruct
+except ImportError:
+    import struct as ustruct
 
 class CRC16:
     """Clase para calcular el CRC-16."""

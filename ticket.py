@@ -12,7 +12,10 @@
 # B -> entero sin signo de 1 byte
 # 4s o 3s -> cadena de 4 o 3 bytes
 
-import ustruct
+try:
+    import ustruct
+except ImportError:
+    import struct as ustruct
 
 class Ticket:
     """Clase para crear un ticket de información de 16 bytes."""

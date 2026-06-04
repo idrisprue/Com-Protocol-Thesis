@@ -1,121 +1,209 @@
-# Design and Development of a Communications Protocol for Pehuensat III
+# Com-Protocol-Thesis
 
-Welcome to the repository for my thesis project: **Design and Development of a Communications Protocol for the Pehuensat III picosatellite**, which is part of the ongoing space program at the Universidad Nacional del Comahue in Neuquén, Argentina.
+MicroPython and CPython support code for an Electronic Engineering thesis on
+the Pehuensat III pico-satellite project. The current default workflow in this
+branch validates the transmit side of a low-rate AX.25 / Bell 202
+communication chain using a Raspberry Pi Pico and an MX614 modem.
 
-This thesis project is being conducted to fulfill the requirements for the Electronic Engineering degree at the Faculty of Engineering, Universidad Nacional del Comahue.
+Older SX1278-based experiments remain in the repository as legacy reference,
+but `main.py` and the `lib/` package now focus on the Pico + MX614 stage.
 
-Here, I will be sharing the project's code, as well as the final thesis document once it's complete, to document both the process and the outcomes.
+## Thesis context
 
-Stay tuned for updates!
+The thesis target is a low-rate radio protocol for downloading IoT telemetry
+from a pico-satellite to a ground station. The current software validates:
 
-## 🧪 Setup: Installing MicroPico (Pico-W-Go) for VS Code
+- AX.25 UI framing
+- AX.25 FCS, bit order, bit stuffing, and NRZI encoding
+- Bell 202 FSK/AFSK-style digital drive toward the MX614 at 1200 bps
 
-This project uses the **MicroPico Visual Studio Code Extension** (aka Pico-W-Go) to write, upload, and run MicroPython code on a Raspberry Pi Pico or Pico W.
+The software is intentionally split into small modules so the design is easier
+to explain, test, and extend during the thesis work.
 
-> ✅ This extension makes it easy to manage files, run code, and access the REPL directly from VS Code.
+## Current branch focus
 
----
+This branch validates the Pico + MX614 modem stage only. It does not yet
+integrate the future radio module path. The older root-level `sx1278.py`,
+`ax25.py`, and `ticket.py` files are preserved as earlier thesis work and
+reference material.
 
-### 🛠️ Prerequisites
+## Hardware used
 
-- [Visual Studio Code](https://code.visualstudio.com/)
-- Python 3.x installed on your system
-- Raspberry Pi Pico or Pico W with MicroPython firmware installed 
+- Raspberry Pi Pico / RP2040
+- MX614 Bell 202 FSK modem
+- Oscilloscope for signal validation
 
-### 🔄 Flashing MicroPython Firmware (if needed)
+## Pin mapping
 
-If your Pico doesn’t have MicroPython installed:
+Current Raspberry Pi Pico to MX614 mapping:
 
-1. Download the latest `.uf2` firmware from:  
-   https://micropython.org/download/rp2-pico/
+- `GP8`  -> `MX614 TXD`
+- `GP9`  <- `MX614 RXD`
+- `GP10` <- `MX614 RDY`
+- `GP11` <- `MX614 DET`
+- `GP12` -> `MX614 M0`
+- `GP13` -> `MX614 M1`
 
-2. Hold down the **BOOTSEL** button on your Pico and plug it into your computer via USB.
-3. A USB drive will appear. Drag and drop the `.uf2` file into it.
-4. The Pico will reboot and be ready to use.
+## Current assumptions pending oscilloscope confirmation
 
----
+The current software keeps these assumptions explicit, but they are still
+provisional until they are confirmed on the bench:
 
-### 🔌 Installing the Extension
+- `M0 = 1`
+- `M1 = 0`
+- this pin combination selects the intended `1200 bps` transmit mode
+- `TXD = 1` should produce approximately `1200 Hz`
+- `TXD = 0` should produce approximately `2200 Hz`
 
-1. Open **Visual Studio Code**
-2. Go to the **Extensions Panel** (or press `Ctrl+Shift+X`)
-3. Search for:  **`MicroPico`**
-1. Install the one titled:  **`MicroPico`**  - Author: `paulober`
+The PCB analog network may follow the datasheet design, but the complete mode
+selection and tone mapping still need oscilloscope confirmation on the actual
+assembled hardware.
 
+## Project structure
 
----
-
-### ⚙️ Extension Configuration
-
-Once installed, configure the extension by:
-
-1. Clicking the gear icon ⚙️ → **Extension Settings** for MicroPico.
-2. Set the **Device Path**:
-   - Windows: `COM3`, `COM4`, etc.
-   - macOS/Linux: `/dev/ttyACM0`, `/dev/ttyUSB0`, etc.
-3. Set the **Main File** if needed (e.g., `main.py`)
-4. Set folders to sync (optional).
-
----
-### ⚙️ Initialize the Project
-
-1. Open the folder where your MicroPython project is located.
-2. Open the **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P` on macOS)
-3. Run:  **`MicroPico: Initialize MicroPico Project`**
-
-> This step imports stub files for autocompletion and sets up the project-specific settings in `.vscode/`.
-
-4. Follow any prompts to install recommended extensions (for autocompletion to work properly).
-
----
-
-### 💡 Test Your Pico with a Simple Program
-
-Create a new Python file (e.g., `blink.py`) and paste this:
-
-```python
-from machine import Pin
-from utime import sleep
-
-pin = Pin("LED", Pin.OUT)
-
-print("LED starts flashing...")
-while True:
-    try:
-        pin.toggle()
-        sleep(1)  # sleep 1 sec
-    except KeyboardInterrupt:
-        break
-
-pin.off()
-print("Finished.")
+```text
+Com-Protocol-Thesis/
+├── README.md
+├── main.py
+├── lib/
+│   ├── __init__.py
+│   ├── ax25.py
+│   ├── mx614.py
+│   ├── sample_data.py
+│   ├── ticket.py
+│   └── transmitter.py
+├── sx1278.py                 # legacy reference
+├── ax25.py                   # legacy reference
+├── ticket.py                 # legacy reference
+└── tests/
+    ├── test_modular_ax25.py
+    └── ... legacy tests ...
 ```
 
----
-To run it:
+## Module overview
 
-- Click the ▶️ **Run** button in the VS Code status bar  **or**
-- Open the Command Palette (`Ctrl+Shift+P`) and run:  **`MicroPico: Run current file on Pico`** or you can right-click on the file and search for the option
+- `lib/mx614.py`: MicroPython wrapper for MX614 pins and mode selection
+- `lib/ticket.py`: pure Python builder for the fixed 16-byte telemetry ticket
+- `lib/ax25.py`: pure Python AX.25 framing, FCS, bit stuffing, and NRZI logic
+- `lib/transmitter.py`: non-blocking bit-level transmitter driven by `ticks_us()`
+- `lib/sample_data.py`: deterministic telemetry dataset for repeatable tests
+- `main.py`: Raspberry Pi Pico integration test loop for the MX614 path
 
+## Telemetry dataset
 
-To stop execution:
+The repository includes a small deterministic set of handcrafted telemetry
+records in `lib/sample_data.py`. This dataset is used to:
 
-- Click the 🟥 **Stop** button in the status bar **or**
-- Open the **Command Palette** and run: **`MicroPico: Stop execution from the command palette`**
+- build repeatable protocol tests on CPython
+- validate more than one telemetry example
+- avoid relying on one hardcoded ticket only
 
+Each record includes:
 
-### 🧯 Troubleshooting
+- `name`
+- `user`
+- `place`
+- `sensor_id`
+- `data`
+- `observations`
+- `day`
+- `time`
 
-- ⚠️ Make sure you are using a **data-capable USB cable** (not just charging) ⚠️
-- Use the command palette (`Ctrl+Shift+P`) and type `Pico` to access common commands.
-- If the port isn't detected:
-  - Try unplugging and reconnecting the board
-  - On Windows, check the port in Device Manager
+`day` and `time` are already stored in the 3-byte thesis wire format so the
+dataset directly exercises the real ticket builder.
 
----
+## Current test goal
 
-### 📁 Project Notes
+The current validation stage is:
 
-Make sure your `main.py` and any modules (e.g., `sx1278.py`, `ax25.py`) are in the root folder so the extension can sync them properly.
+1. Configure the MX614 for transmit mode at 1200 bps.
+2. Build a 16-byte telemetry ticket from a sample record.
+3. Wrap the ticket in an AX.25 UI frame.
+4. Convert the frame to an AX.25 transmit bitstream.
+5. NRZI-encode the bitstream.
+6. Transmit it through `TXD` without blocking the main loop.
+7. Keep reading `DET` and `RDY` while transmission runs.
 
----
+## How to copy files to the Raspberry Pi Pico
+
+Use whichever MicroPython workflow you prefer. Common options are:
+
+- Thonny: copy `main.py` and the full `lib/` directory to the board
+- MicroPico: sync the repository so `main.py` and `lib/` are copied
+- `mpremote`, for example:
+
+```bash
+mpremote connect auto fs cp -r lib :
+mpremote connect auto fs cp main.py :
+```
+
+## How to run
+
+### Run CPython tests on your computer
+
+From the repository root:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+### Run on the Raspberry Pi Pico
+
+Once the files are copied to the board, run:
+
+```python
+import main
+main.main()
+```
+
+If `main.py` is the board entrypoint in your setup, it may also run
+automatically at boot.
+
+## Configuring `main.py`
+
+Near the top of `main.py`, you can edit:
+
+- callsigns and SSIDs
+- transmission interval
+- test mode
+- selected telemetry record name
+
+Available test modes are:
+
+- `fixed_1`
+- `fixed_0`
+- `alt_0101`
+- `ax25`
+
+## Oscilloscope measurement points
+
+- Digital input test point: Pico `GP8` / `MX614 TXD`
+- Analog FSK output: `MX614 TXOUT`
+- System-level analog output toward the future radio path: `AUDIO_TX` at
+  `RADIO_IF1`
+
+`AUDIO_TX` should show the audio-frequency FSK waveform that would later feed
+the radio interface.
+
+## Expected results
+
+For fixed-level validation:
+
+- `TXD = 1` should produce approximately `1200 Hz` at `TXOUT` / `AUDIO_TX`
+- `TXD = 0` should produce approximately `2200 Hz` at `TXOUT` / `AUDIO_TX`
+
+For protocol validation:
+
+- an AX.25 transmission should produce an FSK waveform whose tone transitions
+  follow the NRZI-encoded frame data
+- the main loop should remain responsive and continue monitoring `DET` and
+  `RDY` during transmission
+
+## Notes
+
+- No blocking `sleep_ms()` or `sleep_us()` calls are used in the main transmit
+  loop.
+- Hardware-specific logic is separated from protocol logic to make unit testing
+  easier.
+- The AX.25 and ticket modules under `lib/` are compatible with normal CPython
+  for local testing and thesis documentation.
