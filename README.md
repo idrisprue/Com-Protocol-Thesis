@@ -1,64 +1,65 @@
-# Design and Development of a Communications Protocol for Pehuensat III
+# Diseño y desarrollo de un protocolo de comunicaciones para Pehuensat III
 
-Welcome to the repository for my thesis project: **Design and Development of a Communications Protocol for the Pehuensat III picosatellite**, which is part of the ongoing space program at the Universidad Nacional del Comahue in Neuquén, Argentina.
+Este repositorio contiene el código de mi proyecto de tesis: **Diseño y desarrollo de un protocolo de comunicaciones para el picosatélite Pehuensat III**, que forma parte del programa espacial de la Universidad Nacional del Comahue, en Neuquén, Argentina.
 
-This thesis project is being conducted to fulfill the requirements for the Electronic Engineering degree at the Faculty of Engineering, Universidad Nacional del Comahue.
+El proyecto se desarrolla como parte de los requisitos para obtener el título de Ingeniera Electrónica en la Facultad de Ingeniería de la Universidad Nacional del Comahue.
 
-Here, I share the project's code, and later I will also share the final thesis document, so I can document both the process and the results in an honest way.
+En este repositorio comparto el código del proyecto y, más adelante, también compartiré el documento final de la tesis para dejar registrado el proceso y los resultados de forma clara y verificable.
 
-Right now, the repository is focused on validating the **Raspberry Pi Pico + MX614 modem** stage before integrating a full radio module.
+Actualmente, el repositorio está enfocado en validar la etapa Raspberry Pi Pico + módem MX614 antes de integrar el módulo de radio completo.
 
-## Current status of the project
+## Estado actual del proyecto
 
-At this stage, I am working on the transmit side of the protocol.
+En esta etapa se está trabajando principalmente sobre el lado de transmisión del protocolo.
 
-The idea is to:
+El objetivo es:
 
-- build a 16-byte telemetry ticket
-- wrap it into an AX.25 UI frame
-- calculate the FCS
-- convert the frame to bits in AX.25 order
-- apply bit stuffing
-- apply NRZI encoding
-- send the resulting digital signal from the Raspberry Pi Pico to the MX614
-- observe the analog modem output with an oscilloscope
+- construir un paquete de telemetría de 16 bytes;
+- encapsularlo en una trama AX.25 UI;
+- calcular el FCS;
+- convertir la trama a bits según el orden de AX.25;
+- aplicar bit-stuffing;
+- aplicar codificación NRZI;
+- enviar la señal digital desde la Raspberry Pi Pico al MX614;
+- observar la salida analógica del módem con un osciloscopio;
+- validar posteriormente la transmisión y recepción mediante un equipo externo.
 
-The code is now organized as a small modular library because I want it to be easier to understand, explain during the thesis defense, and test on a normal computer where possible.
+El código está organizado como una biblioteca modular para que sea más fácil de entender, explicar durante la defensa de la tesis y probar en una computadora normal cuando sea posible.
 
-## Hardware being used right now
+## Hardware utilizado actualmente
 
 - Raspberry Pi Pico / RP2040
-- MX614 Bell 202 FSK modem
-- Oscilloscope
+- Módem FSK MX614 Bell 202
+- Osciloscopio
 
-For this validation stage, the objective is to verify the Pico + MX614 chain first. The radio module is not the priority yet.
+En esta etapa de validación, el objetivo principal es verificar primero la cadena Pico + MX614. La integración con el módulo de radio completo se realiza posteriormente.
 
-## Current Raspberry Pi Pico to MX614 pin mapping
+## Conexión actual entre la Raspberry Pi Pico y el MX614
 
-- `GP8`  -> `MX614 TXD`
-- `GP9`  <- `MX614 RXD`
-- `GP10` <- `MX614 RDY`
-- `GP11` <- `MX614 DET`
-- `GP12` -> `MX614 M0`
-- `GP13` -> `MX614 M1`
+- GP8  -> MX614 TXD
+- GP9  <- MX614 RXD
+- GP10 <- MX614 RDY
+- GP11 <- MX614 DET
+- GP12 -> MX614 M0
+- GP13 -> MX614 M1
 
-## Important note about assumptions
+## Supuestos importantes
 
-At the moment, the code assumes:
+Por el momento, el código utiliza los siguientes supuestos:
 
-- `M0 = 1`
-- `M1 = 0`
-- this selects the intended `1200 bps` transmit mode
-- `TXD = 1` should give approximately `1200 Hz`
-- `TXD = 0` should give approximately `2200 Hz`
+- M0 = 1;
+- M1 = 0;
+- esta combinación selecciona el modo de transmisión previsto de 1200 baudios;
+- TXD = 1 debería generar aproximadamente 1200 Hz;
+- TXD = 0 debería generar aproximadamente 2200 Hz.
 
-These assumptions are written explicitly in the code on purpose, but they still need to be confirmed on the bench with the oscilloscope.
+Estos supuestos aparecen explícitamente en el código porque todavía deben confirmarse sobre el hardware real mediante el osciloscopio.
 
-The PCB was designed following the datasheet reference values for the analog section, but I still want to confirm the full behavior on the real hardware instead of pretending it is already fully verified.
+La placa de circuito impreso fue diseñada utilizando los valores de referencia del circuito analógico indicados en la hoja de datos. Sin embargo, el comportamiento completo debe verificarse experimentalmente; no se considera validado solamente por haber sido diseñado según el datasheet.
 
-## Project structure
+## Estructura del proyecto
 
-```text
+~~~text
 Com-Protocol-Thesis/
 ├── README.md
 ├── main.py
@@ -70,105 +71,108 @@ Com-Protocol-Thesis/
 │   ├── ticket.py
 │   └── transmitter.py
 └── tests/
-```
+~~~
 
-## What each part does
+## Función de cada componente
 
-- `lib/mx614.py`: handles the MX614 pins from MicroPython
-- `lib/ticket.py`: builds the fixed 16-byte telemetry ticket
-- `lib/ax25.py`: contains the AX.25 framing logic
-- `lib/transmitter.py`: sends bits in a non-blocking way using `ticks_us()`
-- `lib/sample_data.py`: contains a small deterministic set of sample telemetry records
-- `main.py`: integrates everything on the Raspberry Pi Pico for the current hardware test
+- lib/mx614.py: controla los pines del MX614 desde MicroPython.
+- lib/ticket.py: construye el paquete fijo de telemetría de 16 bytes.
+- lib/ax25.py: contiene la lógica de construcción y codificación de tramas AX.25.
+- lib/transmitter.py: transmite los bits de forma no bloqueante utilizando ticks_us().
+- lib/sample_data.py: contiene registros de telemetría de prueba deterministas.
+- main.py: integra los componentes para realizar las pruebas actuales con la Raspberry Pi Pico.
 
-## Telemetry dataset
+## Conjunto de datos de telemetría
 
-I added a small handcrafted telemetry dataset so the project does not depend on a single hardcoded example anymore.
+El proyecto incluye un pequeño conjunto de datos de telemetría creado manualmente. De esta manera, las pruebas no dependen de un único ejemplo escrito directamente en el programa.
 
-This dataset is useful for:
+Estos registros sirven para:
 
-- testing the protocol logic on CPython
-- validating several realistic telemetry cases
-- keeping the examples repeatable and easier to explain
+- probar la lógica del protocolo en CPython;
+- validar varios casos de telemetría;
+- mantener ejemplos repetibles;
+- facilitar la explicación del funcionamiento del sistema.
 
-The sample records are in `lib/sample_data.py`.
+Los registros se encuentran en lib/sample_data.py.
 
-## What `main.py` is doing now
+## Funcionamiento actual de main.py
 
-The current `main.py` is intended for the MX614 transmit validation stage.
+El archivo main.py está destinado a la etapa de validación de transmisión mediante el MX614.
 
-It:
+Sus funciones principales son:
 
-1. configures the MX614 transmit mode
-2. builds a sample telemetry ticket
-3. creates an AX.25 frame
-4. converts it into a bitstream
-5. applies NRZI encoding
-6. transmits the result through `TXD` without blocking the main loop
-7. keeps monitoring `DET` and `RDY`
+1. configurar el modo de transmisión del MX614;
+2. construir un paquete de telemetría de prueba;
+3. crear una trama AX.25;
+4. convertirla en un flujo de bits;
+5. aplicar la codificación NRZI;
+6. transmitir el resultado mediante el pin TXD sin bloquear el ciclo principal;
+7. continuar monitoreando las señales DET y RDY.
 
-It also includes simple test modes for:
+También incluye modos de prueba para:
 
-- fixed `TXD = 1`
-- fixed `TXD = 0`
-- alternating pattern
-- full AX.25 transmission
+- TXD = 1 fijo;
+- TXD = 0 fijo;
+- patrón alternado;
+- transmisión completa de una trama AX.25.
 
-## What to measure with the oscilloscope
+## Qué medir con el osciloscopio
 
-Useful measurement points are:
+Los puntos de medición más importantes son:
 
-- digital `TXD` at Pico `GP8` / MX614 `TXD`
-- analog output at `MX614 TXOUT`
-- analog output at `AUDIO_TX` in `RADIO_IF1`, if that path is available in the current hardware
+- señal digital TXD en el pin GP8 de la Pico / entrada TXD del MX614;
+- salida analógica en MX614 TXOUT;
+- salida analógica en AUDIO_TX de RADIO_IF1, si ese recorrido está disponible en el hardware utilizado.
 
-Expected result for the simplest tests:
+Para las pruebas más simples se espera observar:
 
-- `TXD = 1` -> approximately `1200 Hz`
-- `TXD = 0` -> approximately `2200 Hz`
+- TXD = 1 -> aproximadamente 1200 Hz;
+- TXD = 0 -> aproximadamente 2200 Hz.
 
-For the AX.25 transmission, I expect to see the tones changing according to the encoded frame.
+Durante la transmisión AX.25, se espera observar el cambio entre ambas frecuencias de acuerdo con los bits codificados de la trama.
 
-## Running tests on the computer
+La medición con osciloscopio permite validar la modulación del MX614. La recepción de la trama por Direwolf permite validar además la cadena completa de transmisión y recepción externa.
 
-The modular path under `lib/` is written so the protocol parts can be tested with normal Python too.
+## Ejecución de las pruebas en una computadora
 
-From the repository root:
+La parte modular ubicada en lib/ está preparada para que la lógica del protocolo pueda probarse también con Python normal.
 
-```bash
+Desde la raíz del repositorio:
+
+~~~bash
 python3 -m unittest discover -s tests -v
-```
+~~~
 
-## Copying files to the Raspberry Pi Pico
+## Copiar los archivos a la Raspberry Pi Pico
 
-This project uses the **MicroPico Visual Studio Code Extension** (also known as Pico-W-Go) to write, upload, and run MicroPython code on the Raspberry Pi Pico.
+Este proyecto utiliza la extensión MicroPico para Visual Studio Code, también conocida como Pico-W-Go, para escribir, cargar y ejecutar código MicroPython en la Raspberry Pi Pico.
 
-> I keep the `.vscode` and `.micropico` files in the repository because they are part of the real workflow I use to connect and work with the board from VS Code.
+Los archivos .vscode y .micropico se mantienen en el repositorio porque forman parte del flujo de trabajo utilizado para conectarse a la placa desde Visual Studio Code.
 
-If your Pico doesn’t have MicroPython installed yet:
+Si la Pico todavía no tiene MicroPython instalado:
 
-1. Download the latest `.uf2` firmware from:
+1. descargar el firmware .uf2 correspondiente desde:
    https://micropython.org/download/rp2-pico/
-2. Hold down the **BOOTSEL** button on your Pico and connect it by USB.
-3. A USB drive will appear.
-4. Drag and drop the `.uf2` file into it.
+2. mantener presionado el botón BOOTSEL de la Pico y conectarla mediante USB;
+3. esperar a que aparezca una unidad de almacenamiento USB;
+4. copiar el archivo .uf2 dentro de esa unidad.
 
-To work with the board from VS Code:
+Para trabajar con la placa desde Visual Studio Code:
 
-1. Install the **MicroPico** extension
-2. Configure the serial device path
-3. Open this project folder
-4. Use the MicroPico commands to sync and run `main.py`
+1. instalar la extensión MicroPico;
+2. configurar el puerto serie;
+3. abrir la carpeta de este repositorio;
+4. utilizar los comandos de MicroPico para sincronizar y ejecutar main.py.
 
-You can also use `mpremote` if you prefer:
+También es posible utilizar mpremote:
 
-```bash
+~~~bash
 mpremote connect auto fs cp -r lib :
 mpremote connect auto fs cp main.py :
-```
+~~~
 
-## Final note
+## Nota final
 
-This repository is not meant to look like a perfectly polished final product from day one. It is also a record of the actual thesis development process, including changes of direction, hardware experiments, and iterations.
+Este repositorio no pretende presentarse como un producto final completamente terminado desde el primer día. También funciona como registro del desarrollo real de la tesis, incluyendo los cambios de dirección, las pruebas de hardware y las iteraciones del proyecto.
 
-Right now, the most important goal is to make the Pico + MX614 validation path solid, readable, and explainable.
+El objetivo actual más importante es lograr que la cadena de validación Pico + MX614 sea sólida, legible, reproducible y fácil de explicar.
