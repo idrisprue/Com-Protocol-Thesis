@@ -1,16 +1,15 @@
-"""Minimal MX614 hardware wrapper for MicroPython.
+"""Control digital del módem MX614 para MicroPython.
 
-This module only models the digital control and status pins used during the
-Pico + MX614 validation stage. The selected mode and tone mapping are kept
-explicit in code, but they should be treated as provisional until oscilloscope
-measurements confirm the expected behavior on the assembled hardware.
+La entrada CLK del MX614 no es controlada por esta clase. Para usar RXD como
+salida de datos demodulados en forma directa, CLK debe estar conectado al nivel
+previsto por el esquema y el datasheet.
 """
 
 from machine import Pin
 
 
 class MX614:
-    """Access the digital control and status pins of the MX614 modem."""
+    """Acceso a los pines de control y estado del módem MX614."""
 
     def __init__(self, txd_pin, rxd_pin, rdy_pin, det_pin, m0_pin, m1_pin):
         self.txd = Pin(txd_pin, Pin.OUT, value=1)
@@ -21,13 +20,13 @@ class MX614:
         self.m1 = Pin(m1_pin, Pin.OUT, value=0)
 
     def set_tx_1200(self):
-        """Select the provisional Bell 202 transmit mode used in this branch.
-
-        The current implementation drives M0=1 and M1=0, following the thesis
-        assumption for 1200 bps transmit validation. That mapping should still
-        be checked on the bench with the MX614 datasheet and oscilloscope.
-        """
+        """Selecciona transmisión Bell 202 a 1200 bit/s: M0=1, M1=0."""
         self.m0.value(1)
+        self.m1.value(0)
+
+    def set_rx_1200(self):
+        """Selecciona recepción Bell 202 a 1200 bit/s: M0=0, M1=0."""
+        self.m0.value(0)
         self.m1.value(0)
 
     def set_txd(self, level):
