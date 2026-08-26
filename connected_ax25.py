@@ -80,12 +80,17 @@ def capture_one_frame(modem):
 
 def transmit_frame(modem, frame):
     """Transmite una respuesta AX.25 por TXD y espera a que termine."""
+    # La Pico estaba escuchando en RX. El MX614 debe pasar a TX antes de
+    # aplicar los niveles NRZI y volver a RX para poder recibir la siguiente
+    # trama de EasyTerm.
+    modem.set_tx_1200()
     levels = frame_to_nrzi_levels(frame, preamble_flags=20, postamble_flags=3)
     transmitter = NonBlockingBitTransmitter(modem.set_txd, BIT_TIME_US)
     transmitter.start(levels)
     while transmitter.is_active():
         transmitter.update()
     modem.set_txd(1)
+    modem.set_rx_1200()
 
 
 def payload_as_text(payload):
