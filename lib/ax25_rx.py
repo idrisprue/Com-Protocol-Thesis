@@ -161,7 +161,13 @@ def sampled_levels(samples, samples_per_bit=8):
 
 def decode_samples(samples, initial_level=1, samples_per_bit=8):
     """Decodifica RXD sobremuestreado probando todas las fases."""
-    for levels in sampled_levels(samples, samples_per_bit=samples_per_bit):
+    # Procesa una fase por vez para no reservar simultáneamente ocho listas.
+    for phase in range(samples_per_bit):
+        levels = []
+        index = phase + (samples_per_bit // 2)
+        while index < len(samples):
+            levels.append(1 if samples[index] else 0)
+            index += samples_per_bit
         frames = decode_levels(levels, initial_level=initial_level)
         if frames:
             return frames
