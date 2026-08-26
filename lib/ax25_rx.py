@@ -10,6 +10,25 @@ except ImportError:
     from ax25 import FLAG_BYTE, CONTROL_UI, PID_NO_LAYER_3, ax25_fcs, byte_to_bits_lsb_first
 
 
+# Tramas de control no numeradas que pueden aparecer en una conexión AX.25.
+CONTROL_SABM = 0x2F
+CONTROL_SABME = 0x6F
+CONTROL_DISC = 0x43
+CONTROL_UA = 0x63
+CONTROL_DM = 0x0F
+CONTROL_FRMR = 0x87
+
+CONTROL_NAMES = {
+    CONTROL_UI: "UI",
+    CONTROL_SABM: "SABM",
+    CONTROL_SABME: "SABME",
+    CONTROL_DISC: "DISC",
+    CONTROL_UA: "UA",
+    CONTROL_DM: "DM",
+    CONTROL_FRMR: "FRMR",
+}
+
+
 def nrzi_decode(levels, initial_level=1):
     """Convierte niveles NRZI en bits AX.25.
 
@@ -95,7 +114,8 @@ def decode_levels(levels, initial_level=1):
         except ValueError:
             continue
 
-        if len(frame) < 18:
+        # Dos direcciones (14 bytes), control (1 byte) y FCS (2 bytes).
+        if len(frame) < 17:
             continue
         if frame[-2:] != ax25_fcs(frame[:-2]):
             continue
@@ -103,10 +123,8 @@ def decode_levels(levels, initial_level=1):
     return frames
 
 
-def parse_ui_frame(frame):
-    """Analiza dirección, control, PID, información y FCS de una trama UI."""
-    if len(frame) < 18:
-        raise ValueError("la trama AX.25 es demasiado corta")
+def _parse_addresses(frame):
+    """Extrae las direcciones AX.25 y devuelve el índice del campo control."""
     if frame[-2:] != ax25_fcs(frame[:-2]):
         raise ValueError("FCS invalido")
 
@@ -119,31 +137,57 @@ def parse_ui_frame(frame):
         if address[6] & 0x01:
             break
 
-    if len(addresses) < 2 or index + 4 > len(frame):
+    if len(addresses) < 2 or index + 1 > len(frame) - 2:
         raise ValueError("campos de direccion AX.25 incompletos")
-    if frame[index] != CONTROL_UI:
-        raise ValueError("no es una trama UI")
-    if frame[index + 1] != PID_NO_LAYER_3:
-        raise ValueError("PID AX.25 no soportado")
 
-    def decode_address(address):
-        callsign = "".join(chr(value >> 1) for value in address[:6]).rstrip()
-        ssid = (address[6] >> 1) & 0x0F
-        return callsign, ssid
+    return addresses, index
 
-    source, source_ssid = decode_address(addresses[1])
-    destination, destination_ssid = decode_address(addresses[0])
-    info_start = index + 2
-    return {
+
+def _decode_address(address):
+    callsign = "".join(chr(value >> 1) for value in address[:6]).rstrip()
+    ssid = (address[6] >> 1) & 0x0F
+    return callsign, ssid
+
+
+def parse_ax25_frame(frame):
+    """Analiza una trama AX.25 UI o de control y valida su FCS."""
+    if len(frame) < 17:
+        raise ValueError("la trama AX.25 es demasiado corta")
+
+    addresses, index = _parse_addresses(frame)
+    source, source_ssid = _decode_address(addresses[1])
+    destination, destination_ssid = _decode_address(addresses[0])
+    control = frame[index]
+    frame_type = CONTROL_NAMES.get(control, "CONTROL_0x{:02X}".format(control))
+
+    packet = {
         "source": source,
         "source_ssid": source_ssid,
         "destination": destination,
         "destination_ssid": destination_ssid,
-        "control": frame[index],
-        "pid": frame[index + 1],
-        "information": frame[info_start:-2],
+        "control": control,
+        "frame_type": frame_type,
+        "information": b"",
         "fcs": frame[-2:],
     }
+
+    if control == CONTROL_UI:
+        if index + 4 > len(frame):
+            raise ValueError("trama UI sin PID o informacion completos")
+        if frame[index + 1] != PID_NO_LAYER_3:
+            raise ValueError("PID AX.25 no soportado")
+        packet["pid"] = frame[index + 1]
+        packet["information"] = frame[index + 2:-2]
+
+    return packet
+
+
+def parse_ui_frame(frame):
+    """Analiza una trama UI y exige que no sea una trama de control."""
+    packet = parse_ax25_frame(frame)
+    if packet["frame_type"] != "UI":
+        raise ValueError("no es una trama UI")
+    return packet
 
 
 def sampled_levels(samples, samples_per_bit=8):
