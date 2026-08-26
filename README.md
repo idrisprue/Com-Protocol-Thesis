@@ -64,6 +64,7 @@ Com-Protocol-Thesis/
 ├── README.md
 ├── main.py
 ├── receive_ax25.py
+├── direwolf_prueba.conf
 ├── lib/
 │   ├── __init__.py
 │   ├── ax25.py
@@ -178,6 +179,64 @@ RESULTADO: OK - recepción y decodificación AX.25 correctas
 ~~~
 
 La clase MX614 utiliza M0 = 0 y M1 = 0 para el modo RX de 1200 bit/s. La entrada CLK del MX614 no es controlada por el código actual, por lo que debe estar conectada al nivel previsto por el esquema y la hoja de datos.
+
+## Prueba de recepción usando Direwolf
+
+Direwolf puede generar y transmitir una trama AX.25 de prueba para que la
+Raspberry Pi Pico la reciba. El archivo `direwolf_prueba.conf` contiene esta
+configuración:
+
+~~~text
+origen: UNCO-3
+destino: NQNGND
+información: T#001,033,050,025,120,204,00000000
+frecuencia de datos: AFSK 1200 bit/s
+~~~
+
+### Prueba cableada, sin radio
+
+Esta es la primera prueba recomendada:
+
+1. Conectar la salida de audio de la computadora a la entrada analógica de
+   recepción del circuito MX614, usando el nivel de audio adecuado.
+2. Conectar RXD del MX614 al GP9 de la Pico.
+3. Ejecutar `receive_ax25.py` en la Pico.
+4. Iniciar Direwolf con `direwolf_prueba.conf`.
+5. Verificar que la salida de Direwolf llegue al MX614.
+
+En Windows, desde la carpeta donde está instalado Direwolf:
+
+~~~bat
+direwolf.exe -c direwolf_prueba.conf
+~~~
+
+En Linux o Raspberry Pi:
+
+~~~bash
+direwolf -c direwolf_prueba.conf
+~~~
+
+Direwolf transmitirá el paquete inmediatamente y luego cada 60 segundos. Cuando
+la Pico lo reciba, debe mostrar `FCS: OK` y el payload completo. Esta prueba
+valida Direwolf, el audio AFSK, el demodulador MX614 y la decodificación AX.25
+de la Pico, sin depender de una segunda radio.
+
+### Prueba por radio
+
+Si se utiliza una radio transmisora:
+
+1. Conectar la salida de audio de Direwolf a la entrada de transmisión de la
+   radio.
+2. Configurar en Direwolf el mismo dispositivo de audio y la misma línea de
+   PTT que ya funciona en el montaje actual.
+3. Conectar la radio receptora a la entrada analógica de recepción del MX614.
+4. Ejecutar primero `receive_ax25.py` en la Pico.
+5. Iniciar Direwolf con `direwolf_prueba.conf`.
+6. Detener Direwolf con Ctrl+C después de obtener un resultado correcto.
+
+No se debe conectar la salida de audio de la computadora directamente al pin
+RXD de la Pico: RXD es una salida digital del MX614. La conexión de prueba debe
+entrar por la entrada analógica del receptor MX614.
 
 ## Ejecución de las pruebas en una computadora
 
