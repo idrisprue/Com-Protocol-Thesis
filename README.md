@@ -60,11 +60,24 @@ Com-Protocol-Thesis/
     └── README.md
 ```
 
-Los comentarios, docstrings y mensajes agregados para estas pruebas están en español. Se mantienen en inglés solo los nombres estándar del protocolo: AX.25, APRS, NRZI, FCS, RXD, TXD, DET, SABME, UA, I y RR.
-
 ## Qué prueba cada programa
 
 ### 1. Verificación sin hardware
+└── tests/
+~~~
+
+## Función de cada componente
+
+- lib/mx614.py: controla los pines del MX614 desde MicroPython.
+- lib/ticket.py: construye el paquete fijo de telemetría de 16 bytes.
+- lib/ax25.py: contiene la lógica de construcción y codificación de tramas AX.25.
+- lib/ax25_rx.py: contiene la lógica de recepción, decodificación NRZI, desbit-stuffing y validación del FCS.
+- lib/transmitter.py: transmite los bits de forma no bloqueante utilizando ticks_us().
+- lib/sample_data.py: contiene registros de telemetría de prueba deterministas.
+- main.py: integra los componentes para realizar las pruebas actuales con la Raspberry Pi Pico.
+- receive_ax25.py: captura la señal RXD del MX614 y prueba la reconstrucción de una trama AX.25.
+
+## Conjunto de datos de telemetría
 
 Desde la carpeta del proyecto:
 
