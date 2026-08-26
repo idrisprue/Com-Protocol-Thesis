@@ -144,6 +144,11 @@ El director indicó que EasyTerm está enviando `SABME`. Para esa prueba cargar:
 
 Ejecutar primero `connected_ax25.py` en la Pico. Después iniciar desde EasyTerm una conexión AX.25 dirigida a `NQNGND`.
 
+El programa cambia automáticamente el MX614 de RX a TX para enviar `UA` o
+`RR`, y vuelve a RX después de cada respuesta. Por eso deben estar conectados
+los dos caminos de audio: el de llegada a la entrada analógica del MX614 y el
+de salida del MX614 hacia el receptor de EasyTerm.
+
 La secuencia esperada es:
 
 ```text
