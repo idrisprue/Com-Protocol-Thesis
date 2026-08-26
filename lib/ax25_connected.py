@@ -49,13 +49,17 @@ class Ax25ConnectedEndpoint:
                 last=False,
             )
         )
-        frame.extend(
+        source_address = bytearray(
             ax25_address(
                 self.local_callsign,
                 self.local_ssid,
                 last=True,
             )
         )
+        # Las tramas generadas aquí son respuestas AX.25 v2: C=0 en destino
+        # y C=1 en origen.
+        source_address[-1] |= 0x80
+        frame.extend(source_address)
         frame.extend(control_bytes)
         frame.extend(information)
         frame.extend(ax25_fcs(frame))

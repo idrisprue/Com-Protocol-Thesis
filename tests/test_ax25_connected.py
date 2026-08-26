@@ -27,6 +27,8 @@ class ConnectedAx25Tests(unittest.TestCase):
         self.assertEqual(response["frame_type"], "UA")
         self.assertEqual(response["source"], "NQNGND")
         self.assertEqual(response["destination"], "UNCO")
+        self.assertEqual(responses[0][6] & 0x80, 0)
+        self.assertEqual(responses[0][13] & 0x80, 0x80)
 
     def test_extended_i_frame_gets_rr_response(self):
         endpoint = Ax25ConnectedEndpoint("NQNGND", 0)
