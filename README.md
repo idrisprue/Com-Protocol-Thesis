@@ -86,12 +86,6 @@ Com-Protocol-Thesis/
 - main.py: integra los componentes para realizar las pruebas actuales con la Raspberry Pi Pico.
 - receive_ax25.py: captura la señal RXD del MX614 y prueba la reconstrucción de una trama AX.25.
 
-## Idioma y lectura del código
-
-Los comentarios, docstrings y mensajes de diagnóstico de los módulos utilizados para construir, transmitir y recibir AX.25 están escritos en español. Se mantienen en inglés únicamente algunos nombres técnicos del protocolo, como AX.25, NRZI, FCS, RXD, TXD, DET y bit-stuffing, porque son las denominaciones estándar.
-
-La idea es que el equipo pueda leer el programa y reconocer qué etapa está ejecutando: captura, decodificación, validación o interpretación del payload.
-
 ## Conjunto de datos de telemetría
 
 El proyecto incluye un pequeño conjunto de datos de telemetría creado manualmente. De esta manera, las pruebas no dependen de un único ejemplo escrito directamente en el programa.
