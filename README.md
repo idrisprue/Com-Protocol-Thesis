@@ -38,6 +38,7 @@ No conectar salidas de RF directamente entre equipos. Para una prueba cableada h
 ```text
 Com-Protocol-Thesis/
 ├── README.md
+├── GUIA_PRUEBA_EASYTERM.md
 ├── main.py
 ├── receive_ax25.py
 ├── connected_ax25.py
@@ -211,6 +212,8 @@ La carpeta `kit_pruebas_beacon/` contiene programas numerados para que el equipo
 6. recepción UI o conexión EasyTerm, según el objetivo.
 
 En cada prueba deben guardar la salida de la consola y anotar el cableado, modo del MX614, configuración de Direwolf/EasyTerm y si la prueba fue cableada o por radio.
+
+Para el procedimiento conectado con EasyTerm, consultar también `GUIA_PRUEBA_EASYTERM.md`, que resume el cableado, los archivos a cargar, la secuencia `SABME → UA → I → RR` y la interpretación de los resultados.
 
 ## Resultado validado y pendiente
 
