@@ -24,10 +24,10 @@ except ImportError:
 
 try:
     from lib.mx614 import MX614
-    from lib.ax25_rx import decode_samples, parse_ui_frame
+    from lib.ax25_rx import decode_samples, parse_ax25_frame
 except ImportError:
     from mx614 import MX614
-    from ax25_rx import decode_samples, parse_ui_frame
+    from ax25_rx import decode_samples, parse_ax25_frame
 
 
 BIT_RATE = 1200
@@ -97,8 +97,7 @@ def main():
         return
 
     try:
-        packet = parse_ui_frame(frames[0])
-        payload = packet["information"].decode("ascii")
+        packet = parse_ax25_frame(frames[0])
     except Exception as error:
         print("RESULTADO: ERROR - trama encontrada pero no se pudo interpretar:", error)
         return
@@ -106,6 +105,20 @@ def main():
     print("FCS: OK")
     print("ORIGEN:", packet["source"] + "-" + str(packet["source_ssid"]))
     print("DESTINO:", packet["destination"] + "-" + str(packet["destination_ssid"]))
+
+    if packet["frame_type"] != "UI":
+        print("TIPO AX.25:", packet["frame_type"])
+        if packet["frame_type"] == "SABME":
+            print("El emisor esta intentando iniciar una conexion AX.25")
+        print("RESULTADO: OK - trama AX.25 valida, pero no es un beacon UI/APRS")
+        return
+
+    try:
+        payload = packet["information"].decode("ascii")
+    except UnicodeError as error:
+        print("RESULTADO: ERROR - el payload UI no es ASCII:", error)
+        return
+
     print("PAYLOAD:", payload)
     print("RESULTADO: OK - recepcion y decodificacion AX.25 correctas")
 
