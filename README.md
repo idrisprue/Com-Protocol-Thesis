@@ -1,322 +1,214 @@
 # Diseño y desarrollo de un protocolo de comunicaciones para Pehuensat III
 
-Este repositorio contiene el código de mi proyecto de tesis: **Diseño y desarrollo de un protocolo de comunicaciones para el picosatélite Pehuensat III**, que forma parte del programa espacial de la Universidad Nacional del Comahue, en Neuquén, Argentina.
+Este repositorio contiene el código del proyecto de tesis **Diseño y desarrollo de un protocolo de comunicaciones para el picosatélite Pehuensat III**, de la Universidad Nacional del Comahue.
 
-El proyecto se desarrolla como parte de los requisitos para obtener el título de Ingeniera Electrónica en la Facultad de Ingeniería de la Universidad Nacional del Comahue.
+El objetivo de esta etapa es validar la cadena Raspberry Pi Pico + módem MX614 Bell 202 antes de integrar el módulo de radio completo. El repositorio incluye transmisión de telemetría APRS/AX.25 y recepción de tramas AX.25.
 
-En este repositorio comparto el código del proyecto y, más adelante, también compartiré el documento final de la tesis para dejar registrado el proceso y los resultados de forma clara y verificable.
+## Estado actual
 
-Actualmente, el repositorio está enfocado en validar la etapa Raspberry Pi Pico + módem MX614 antes de integrar el módulo de radio completo.
+Se pueden probar dos modos diferentes:
 
-## Estado actual del proyecto
+- **Beacon APRS:** una trama AX.25 `UI` con información de telemetría, por ejemplo `T#001,033,050,025,120,204,00000000`.
+- **Conexión AX.25 con EasyTerm:** intercambio de tramas de control y datos: `SABME → UA → I → RR`.
 
-En esta etapa se está trabajando sobre la transmisión y se está incorporando la recepción de tramas AX.25.
+La Pico valida el FCS, decodifica NRZI y bit-stuffing, identifica el tipo de trama y muestra el payload cuando corresponde.
 
-El objetivo es:
-
-- construir un paquete de telemetría de 16 bytes;
-- encapsularlo en una trama AX.25 UI;
-- calcular el FCS;
-- convertir la trama a bits según el orden de AX.25;
-- aplicar bit-stuffing;
-- aplicar codificación NRZI;
-- enviar la señal digital desde la Raspberry Pi Pico al MX614;
-- observar la salida analógica del módem con un osciloscopio;
-- validar posteriormente la transmisión y recepción mediante un equipo externo.
-
-El código está organizado como una biblioteca modular para que sea más fácil de entender, explicar durante la defensa de la tesis y probar en una computadora normal cuando sea posible.
-
-## Hardware utilizado actualmente
+## Hardware y conexiones
 
 - Raspberry Pi Pico / RP2040
-- Módem FSK MX614 Bell 202
+- Módem MX614 Bell 202
 - Osciloscopio
+- Equipo de radio o conexión de audio cableada para la prueba
 
-En esta etapa de validación, el objetivo principal es verificar primero la cadena Pico + MX614. La integración con el módulo de radio completo se realiza posteriormente.
+Conexiones usadas por el código:
 
-## Conexión actual entre la Raspberry Pi Pico y el MX614
+- GP8 → TXD
+- GP9 ← RXD
+- GP10 ← RDY
+- GP11 ← DET
+- GP12 → M0
+- GP13 → M1
 
-- GP8  -> MX614 TXD
-- GP9  <- MX614 RXD
-- GP10 <- MX614 RDY
-- GP11 <- MX614 DET
-- GP12 -> MX614 M0
-- GP13 -> MX614 M1
+Para transmitir se usa M0=1, M1=0. Para recibir a 1200 bit/s se usa M0=0, M1=0. La entrada CLK del MX614 debe estar conectada según el esquema y el datasheet; el código no la genera.
 
-## Supuestos importantes
+No conectar salidas de RF directamente entre equipos. Para una prueba cableada hay que usar la atenuación o carga adecuada indicada por el director.
 
-Por el momento, el código utiliza los siguientes supuestos:
+## Estructura principal
 
-- M0 = 1;
-- M1 = 0;
-- esta combinación selecciona el modo de transmisión previsto de 1200 baudios;
-- TXD = 1 debería generar aproximadamente 1200 Hz;
-- TXD = 0 debería generar aproximadamente 2200 Hz.
-
-Estos supuestos aparecen explícitamente en el código porque todavía deben confirmarse sobre el hardware real mediante el osciloscopio.
-
-La placa de circuito impreso fue diseñada utilizando los valores de referencia del circuito analógico indicados en la hoja de datos. Sin embargo, el comportamiento completo debe verificarse experimentalmente; no se considera validado solamente por haber sido diseñado según el datasheet.
-
-## Estructura del proyecto
-
-~~~text
+```text
 Com-Protocol-Thesis/
 ├── README.md
 ├── main.py
 ├── receive_ax25.py
+├── connected_ax25.py
 ├── direwolf_prueba.conf
 ├── lib/
-│   ├── __init__.py
 │   ├── ax25.py
 │   ├── ax25_rx.py
+│   ├── ax25_connected.py
 │   ├── mx614.py
-│   ├── sample_data.py
-│   ├── ticket.py
 │   └── transmitter.py
-└── tests/
-~~~
+├── tests/
+│   └── test_ax25_connected.py
+└── kit_pruebas_beacon/
+    ├── 01_verificar_payload_aprs.py
+    ├── 02_verificar_codificador_ax25.py
+    ├── 03_transmitir_un_paquete.py
+    ├── 04_transmitir_beacon_completo.py
+    ├── 05_probar_cable_rx.py
+    └── README.md
+```
 
-## Función de cada componente
+Los comentarios, docstrings y mensajes agregados para estas pruebas están en español. Se mantienen en inglés solo los nombres estándar del protocolo: AX.25, APRS, NRZI, FCS, RXD, TXD, DET, SABME, UA, I y RR.
 
-- lib/mx614.py: controla los pines del MX614 desde MicroPython.
-- lib/ticket.py: construye el paquete fijo de telemetría de 16 bytes.
-- lib/ax25.py: contiene la lógica de construcción y codificación de tramas AX.25.
-- lib/ax25_rx.py: contiene la lógica de recepción, decodificación NRZI, desbit-stuffing y validación del FCS.
-- lib/transmitter.py: transmite los bits de forma no bloqueante utilizando ticks_us().
-- lib/sample_data.py: contiene registros de telemetría de prueba deterministas.
-- main.py: integra los componentes para realizar las pruebas actuales con la Raspberry Pi Pico.
-- receive_ax25.py: captura la señal RXD del MX614 y prueba la reconstrucción de una trama AX.25.
+## Qué prueba cada programa
 
-## Idioma y lectura del código
+### 1. Verificación sin hardware
 
-Los comentarios, docstrings y mensajes de diagnóstico de los módulos utilizados para construir, transmitir y recibir AX.25 están escritos en español. Se mantienen en inglés únicamente algunos nombres técnicos del protocolo, como AX.25, NRZI, FCS, RXD, TXD, DET y bit-stuffing, porque son las denominaciones estándar.
+Desde la carpeta del proyecto:
 
-La idea es que el equipo pueda leer el programa y reconocer qué etapa está ejecutando: captura, decodificación, validación o interpretación del payload.
+```bash
+python3 kit_pruebas_beacon/01_verificar_payload_aprs.py
+python3 kit_pruebas_beacon/02_verificar_codificador_ax25.py
+python3 -m unittest discover -s tests -v
+```
 
-## Conjunto de datos de telemetría
+El primer programa comprueba que los payloads sean ASCII y tengan el formato APRS esperado. El segundo comprueba la construcción de la trama, el FCS, el bitstream y NRZI. Estas pruebas no demuestran que el MX614 module correctamente.
 
-El proyecto incluye un pequeño conjunto de datos de telemetría creado manualmente. De esta manera, las pruebas no dependen de un único ejemplo escrito directamente en el programa.
+### 2. Transmisión de un beacon UI con Direwolf
 
-Estos registros sirven para:
+Usar `03_transmitir_un_paquete.py` después de cargarlo en la Pico junto con `lib/`.
 
-- probar la lógica del protocolo en CPython;
-- validar varios casos de telemetría;
-- mantener ejemplos repetibles;
-- facilitar la explicación del funcionamiento del sistema.
+Direwolf debe mostrar exactamente:
 
-Los registros se encuentran en lib/sample_data.py.
+```text
+UNCO-3>NQNGND:T#001,033,050,025,120,204,00000000
+```
 
-## Funcionamiento actual de main.py
+Esa salida confirma la cadena completa de transmisión: AX.25, FCS, bit-stuffing, NRZI, temporización, MX614, audio/radio y demodulación externa.
 
-El archivo main.py está destinado a la etapa de validación de transmisión mediante el MX614.
+Para Direwolf se incluye `direwolf_prueba.conf`. La configuración transmite el beacon inmediatamente y luego cada 60 segundos:
 
-Sus funciones principales son:
+```text
+direwolf -c direwolf_prueba.conf
+```
 
-1. configurar el modo de transmisión del MX614;
-2. construir un paquete de telemetría de prueba;
-3. crear una trama AX.25;
-4. convertirla en un flujo de bits;
-5. aplicar la codificación NRZI;
-6. transmitir el resultado mediante el pin TXD sin bloquear el ciclo principal;
-7. continuar monitoreando las señales DET y RDY.
+En Windows:
 
-También incluye modos de prueba para:
+```text
+direwolf.exe -c direwolf_prueba.conf
+```
 
-- TXD = 1 fijo;
-- TXD = 0 fijo;
-- patrón alternado;
-- transmisión completa de una trama AX.25.
+### 3. Beacon APRS completo
 
-## Qué medir con el osciloscopio
+Ejecutar `04_transmitir_beacon_completo.py` solo después de que funcione el paquete único. Envía identificación, `PARM`, `UNIT`, `EQNS`, `BITS` y `T#`.
 
-Los puntos de medición más importantes son:
+En este modo el receptor remoto debe interpretar tramas **UI**. No se debe esperar un intercambio `SABME/UA`.
 
-- señal digital TXD en el pin GP8 de la Pico / entrada TXD del MX614;
-- salida analógica en MX614 TXOUT;
-- salida analógica en AUDIO_TX de RADIO_IF1, si ese recorrido está disponible en el hardware utilizado.
+### 4. Recepción UI en la Pico
 
-Para las pruebas más simples se espera observar:
+Cargar en la Pico:
 
-- TXD = 1 -> aproximadamente 1200 Hz;
-- TXD = 0 -> aproximadamente 2200 Hz.
+- `receive_ax25.py`
+- `lib/ax25_rx.py`
+- `lib/mx614.py`
 
-Durante la transmisión AX.25, se espera observar el cambio entre ambas frecuencias de acuerdo con los bits codificados de la trama.
+Conectar la salida de audio de la estación transmisora a la entrada analógica del receptor MX614 y conectar RXD al GP9. Ejecutar `receive_ax25.py` mientras otra estación transmite:
 
-La medición con osciloscopio permite validar la modulación del MX614. La recepción de la trama por Direwolf permite validar además la cadena completa de transmisión y recepción externa.
+```text
+T#001,033,050,025,120,204,00000000
+```
 
-## Recepción de tramas AX.25
+Resultado esperado:
 
-El archivo receive_ax25.py permite probar el camino de recepción de la Raspberry Pi Pico:
-
-~~~text
-radio receptor
-→ entrada de recepción del MX614
-→ RXD
-→ GPIO9 de la Pico
-→ decodificación NRZI
-→ eliminación del bit-stuffing
-→ búsqueda de flags
-→ validación del FCS
-→ recuperación del payload
-~~~
-
-Para ejecutar la prueba:
-
-1. conectar el audio de recepción al circuito del MX614;
-2. conectar RXD del MX614 al GP9 de la Pico;
-3. configurar el MX614 en modo RX de 1200 bit/s;
-4. ejecutar receive_ax25.py;
-5. transmitir desde otra radio el paquete de prueba indicado por el programa.
-
-Si todo funciona, la Pico debe mostrar:
-
-~~~text
+```text
 FCS: OK
 ORIGEN: UNCO-3
 DESTINO: NQNGND
 PAYLOAD: T#001,033,050,025,120,204,00000000
-RESULTADO: OK - recepción y decodificación AX.25 correctas
-~~~
+RESULTADO: OK - recepcion y decodificacion AX.25 correctas
+```
 
-La clase MX614 utiliza M0 = 0 y M1 = 0 para el modo RX de 1200 bit/s. La entrada CLK del MX614 no es controlada por el código actual, por lo que debe estar conectada al nivel previsto por el esquema y la hoja de datos.
+Si Direwolf o EasyTerm envía `SABME`, `receive_ax25.py` puede indicar que la trama AX.25 es válida, pero no es un beacon UI/APRS. Eso no es un error de FCS: significa que se está usando el programa equivocado para ese tipo de prueba.
 
-## Prueba de recepción usando Direwolf
+### 5. Prueba conectada con EasyTerm
 
-Direwolf puede generar y transmitir una trama AX.25 de prueba para que la
-Raspberry Pi Pico la reciba. El archivo `direwolf_prueba.conf` contiene esta
-configuración:
+El director indicó que EasyTerm está enviando `SABME`. Para esa prueba cargar:
 
-~~~text
-origen: UNCO-3
-destino: NQNGND
-información: T#001,033,050,025,120,204,00000000
-frecuencia de datos: AFSK 1200 bit/s
-~~~
+- `connected_ax25.py`
+- `lib/ax25_connected.py`
+- `lib/ax25_rx.py`
+- `lib/ax25.py`
+- `lib/mx614.py`
+- `lib/transmitter.py`
 
-### Prueba cableada, sin radio
+Ejecutar primero `connected_ax25.py` en la Pico. Después iniciar desde EasyTerm una conexión AX.25 dirigida a `NQNGND`.
 
-Esta es la primera prueba recomendada:
+La secuencia esperada es:
 
-1. Conectar la salida de audio de la computadora a la entrada analógica de
-   recepción del circuito MX614, usando el nivel de audio adecuado.
-2. Conectar RXD del MX614 al GP9 de la Pico.
-3. Ejecutar `receive_ax25.py` en la Pico.
-4. Iniciar Direwolf con `direwolf_prueba.conf`.
-5. Verificar que la salida de Direwolf llegue al MX614.
+```text
+EasyTerm  → SABME
+Pico      → UA
+EasyTerm  → I (datos)
+Pico      → RR
+```
 
-En Windows, desde la carpeta donde está instalado Direwolf:
+En la consola de la Pico debería aparecer algo similar a:
 
-~~~bat
-direwolf.exe -c direwolf_prueba.conf
-~~~
-
-En Linux o Raspberry Pi:
-
-~~~bash
-direwolf -c direwolf_prueba.conf
-~~~
-
-Direwolf transmitirá el paquete inmediatamente y luego cada 60 segundos. Cuando
-la Pico lo reciba, debe mostrar `FCS: OK` y el payload completo. Esta prueba
-valida Direwolf, el audio AFSK, el demodulador MX614 y la decodificación AX.25
-de la Pico, sin depender de una segunda radio.
-
-### Prueba por radio
-
-Si se utiliza una radio transmisora:
-
-1. Conectar la salida de audio de Direwolf a la entrada de transmisión de la
-   radio.
-2. Configurar en Direwolf el mismo dispositivo de audio y la misma línea de
-   PTT que ya funciona en el montaje actual.
-3. Conectar la radio receptora a la entrada analógica de recepción del MX614.
-4. Ejecutar primero `receive_ax25.py` en la Pico.
-5. Iniciar Direwolf con `direwolf_prueba.conf`.
-6. Detener Direwolf con Ctrl+C después de obtener un resultado correcto.
-
-No se debe conectar la salida de audio de la computadora directamente al pin
-RXD de la Pico: RXD es una salida digital del MX614. La conexión de prueba debe
-entrar por la entrada analógica del receptor MX614.
-
-### Diferencia entre UI y SABME
-
-El beacon APRS de telemetría se transmite como una trama `UI`. Su campo de
-información contiene el payload, por ejemplo:
-
-~~~text
-T#001,033,050,025,120,204,00000000
-~~~
-
-EasyTerm puede comenzar una conexión AX.25 enviando una trama `SABME`. Esta
-también es una trama AX.25 válida y tiene FCS, pero es una trama de control:
-no contiene un payload APRS ni el campo PID de una trama UI.
-
-El receptor ahora informa ambos casos:
-
-~~~text
+```text
 FCS: OK
-TIPO AX.25: SABME
-RESULTADO: OK - trama AX.25 valida, pero no es un beacon UI/APRS
-~~~
+ORIGEN: UNCO - 3
+EVENTO: SABME recibido: conexión módulo 128 iniciada
+Transmitiendo respuesta AX.25...
+Respuesta transmitida
+```
 
-Esto demuestra que la Pico recibió y validó la trama, pero no demuestra todavía
-una comunicación conectada completa. Para eso habría que implementar la
-negociación `SABME → UA`, las tramas de información `I` y las confirmaciones.
+Cuando EasyTerm envíe datos:
 
-Para probar el beacon de telemetría, EasyTerm debe enviar una trama UI/unproto o
-debe utilizarse la configuración `direwolf_prueba.conf`.
+```text
+EVENTO: I recibida correctamente: se responde RR
+PAYLOAD: ...
+```
 
-### Problema de memoria durante la recepción
+La recepción de `SABME` con `FCS: OK` demuestra que la Pico recibió una trama AX.25 de control válida. La respuesta `UA` demuestra que la Pico puede participar en el inicio de una conexión. La respuesta `RR` después de una trama `I` demuestra el acuse básico de datos.
+
+Esta implementación es un respondedor mínimo de laboratorio. Incluye `SABME`, `SABM`, `UA`, `I`, `RR`, `REJ`, `DISC` y `DM`, pero todavía no es una pila AX.25 completa: no implementa todos los temporizadores, reintentos, ventanas, retransmisiones ni todas las variantes de direccionamiento. Es suficiente para verificar el enlace punto a punto inicial con EasyTerm.
+
+## UI y SABME no son lo mismo
+
+- `UI`: trama sin conexión. Es la que usa normalmente APRS para beacons y telemetría.
+- `SABME`: trama de control. Inicia una conexión AX.25 de módulo 128 y no contiene un payload APRS.
+- `UA`: respuesta afirmativa al inicio de conexión.
+- `I`: trama de información dentro de la conexión.
+- `RR`: confirmación de recepción.
+
+Por eso el beacon y la prueba de EasyTerm necesitan programas distintos, aunque ambos usen AX.25.
+
+## Problema de memoria
 
 Si aparece:
 
-~~~text
-MemoryError: memory allocation failed
-~~~
+```text
+MemoryError: memory allocation failed, allocating 262144 bytes
+```
 
-se estaba intentando guardar demasiadas muestras en una lista de Python. La versión actual de `receive_ax25.py` utiliza un `bytearray`, limita la ventana de captura a 1,5 segundos y procesa una fase de muestreo por vez para reducir el uso de RAM. Hay que volver a copiar a la Pico la versión actualizada de `receive_ax25.py` y `lib/ax25_rx.py`, reiniciar la placa y repetir la prueba.
+la captura estaba intentando reservar demasiada memoria en la Pico. Las versiones actuales usan `bytearray`, ventanas de captura limitadas y procesamiento por fases. Hay que volver a cargar en la Pico la versión actual de `receive_ax25.py` o `connected_ax25.py` y `lib/ax25_rx.py`, reiniciar la placa y repetir.
 
-## Ejecución de las pruebas en una computadora
+## Kit de pruebas
 
-La parte modular ubicada en lib/ está preparada para que la lógica del protocolo pueda probarse también con Python normal.
+La carpeta `kit_pruebas_beacon/` contiene programas numerados para que el equipo pueda ejecutar las pruebas sin modificar el código. El orden recomendado es:
 
-Desde la raíz del repositorio:
+1. payload APRS;
+2. codificador AX.25;
+3. un beacon con Direwolf;
+4. beacon APRS completo;
+5. camino eléctrico RX;
+6. recepción UI o conexión EasyTerm, según el objetivo.
 
-~~~bash
-python3 -m unittest discover -s tests -v
-~~~
+En cada prueba deben guardar la salida de la consola y anotar el cableado, modo del MX614, configuración de Direwolf/EasyTerm y si la prueba fue cableada o por radio.
 
-## Copiar los archivos a la Raspberry Pi Pico
+## Resultado validado y pendiente
 
-Este proyecto utiliza la extensión MicroPico para Visual Studio Code, también conocida como Pico-W-Go, para escribir, cargar y ejecutar código MicroPython en la Raspberry Pi Pico.
+La lógica del protocolo se validó automáticamente en una computadora: pasan 7 pruebas, incluyendo FCS, NRZI, bit-stuffing, rechazo de tramas corruptas, recepción de `SABME` y respuestas `UA/RR`.
 
-Los archivos .vscode y .micropico se mantienen en el repositorio porque forman parte del flujo de trabajo utilizado para conectarse a la placa desde Visual Studio Code.
-
-Si la Pico todavía no tiene MicroPython instalado:
-
-1. descargar el firmware .uf2 correspondiente desde:
-   https://micropython.org/download/rp2-pico/
-2. mantener presionado el botón BOOTSEL de la Pico y conectarla mediante USB;
-3. esperar a que aparezca una unidad de almacenamiento USB;
-4. copiar el archivo .uf2 dentro de esa unidad.
-
-Para trabajar con la placa desde Visual Studio Code:
-
-1. instalar la extensión MicroPico;
-2. configurar el puerto serie;
-3. abrir la carpeta de este repositorio;
-4. utilizar los comandos de MicroPico para sincronizar y ejecutar main.py.
-
-También es posible utilizar mpremote:
-
-~~~bash
-mpremote connect auto fs cp -r lib :
-mpremote connect auto fs cp main.py :
-mpremote connect auto fs cp receive_ax25.py :
-~~~
-
-## Nota final
-
-Este repositorio no pretende presentarse como un producto final completamente terminado desde el primer día. También funciona como registro del desarrollo real de la tesis, incluyendo los cambios de dirección, las pruebas de hardware y las iteraciones del proyecto.
-
-El objetivo actual más importante es lograr que la cadena de validación Pico + MX614 sea sólida, legible, reproducible y fácil de explicar.
+La validación del circuito, la modulación analógica y el enlace de radio todavía debe realizarse en el laboratorio.
