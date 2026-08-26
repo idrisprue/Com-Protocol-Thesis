@@ -1,7 +1,7 @@
-"""AX.25 receiver helpers for the Pico + MX614 validation.
+"""Funciones auxiliares de recepción AX.25 para validar la Pico + MX614.
 
-This module is hardware-independent. It receives sampled NRZI logic levels,
-undoes NRZI and bit-stuffing, looks for AX.25 flags, and validates the FCS.
+Este módulo no depende del hardware. Recibe niveles lógicos NRZI muestreados,
+deshace NRZI y el bit-stuffing, busca banderas AX.25 y valida el FCS.
 """
 
 try:
@@ -11,9 +11,10 @@ except ImportError:
 
 
 def nrzi_decode(levels, initial_level=1):
-    """Convert NRZI levels to AX.25 bits.
+    """Convierte niveles NRZI en bits AX.25.
 
-    Equal consecutive levels represent bit 1. A level change represents bit 0.
+    Dos niveles consecutivos iguales representan un bit 1. Un cambio de nivel
+    representa un bit 0.
     """
     previous = 1 if initial_level else 0
     bits = []
@@ -25,7 +26,7 @@ def nrzi_decode(levels, initial_level=1):
 
 
 def bit_unstuff(bits):
-    """Remove a zero inserted after every sequence of five ones."""
+    """Elimina el cero insertado después de cada secuencia de cinco unos."""
     result = []
     consecutive_ones = 0
     index = 0
@@ -37,7 +38,7 @@ def bit_unstuff(bits):
             if consecutive_ones == 5:
                 index += 1
                 if index >= len(bits) or bits[index] != 0:
-                    raise ValueError("invalid AX.25 bit-stuffing")
+                    raise ValueError("bit-stuffing AX.25 inválido")
                 consecutive_ones = 0
         else:
             consecutive_ones = 0
@@ -46,9 +47,9 @@ def bit_unstuff(bits):
 
 
 def bits_to_bytes_lsb_first(bits):
-    """Convert complete LSB-first groups of eight bits into bytes."""
+    """Convierte grupos completos de ocho bits LSB-first en bytes."""
     if len(bits) % 8 != 0:
-        raise ValueError("AX.25 frame does not contain complete bytes")
+        raise ValueError("la trama AX.25 no contiene bytes completos")
     result = bytearray()
     for start in range(0, len(bits), 8):
         value = 0
@@ -68,7 +69,7 @@ def _find_flag(bits, start):
 
 
 def _candidate_frames(bits):
-    """Yield body bit candidates between consecutive flags."""
+    """Genera candidatos de bits del cuerpo entre banderas consecutivas."""
     start = _find_flag(bits, 0)
     while start >= 0:
         end = _find_flag(bits, start + 8)
@@ -81,9 +82,9 @@ def _candidate_frames(bits):
 
 
 def decode_levels(levels, initial_level=1):
-    """Return valid AX.25 frames found in a sequence of NRZI levels.
+    """Devuelve las tramas AX.25 válidas encontradas en niveles NRZI.
 
-    Frames are returned without flags and as raw bytes, including the FCS.
+    Las tramas se devuelven sin banderas, como bytes crudos e incluyendo el FCS.
     """
     bits = nrzi_decode(levels, initial_level=initial_level)
     frames = []
@@ -103,9 +104,9 @@ def decode_levels(levels, initial_level=1):
 
 
 def parse_ui_frame(frame):
-    """Parse the address, control, PID, information and FCS of a UI frame."""
+    """Analiza dirección, control, PID, información y FCS de una trama UI."""
     if len(frame) < 18:
-        raise ValueError("AX.25 frame is too short")
+        raise ValueError("la trama AX.25 es demasiado corta")
     if frame[-2:] != ax25_fcs(frame[:-2]):
         raise ValueError("FCS invalido")
 
@@ -146,7 +147,7 @@ def parse_ui_frame(frame):
 
 
 def sampled_levels(samples, samples_per_bit=8):
-    """Try every sample phase and return candidate bit-level sequences."""
+    """Prueba cada fase de muestreo y devuelve secuencias candidatas."""
     candidates = []
     for phase in range(samples_per_bit):
         levels = []
@@ -159,7 +160,7 @@ def sampled_levels(samples, samples_per_bit=8):
 
 
 def decode_samples(samples, initial_level=1, samples_per_bit=8):
-    """Decode oversampled RXD data, trying all sample phases."""
+    """Decodifica RXD sobremuestreado probando todas las fases."""
     for levels in sampled_levels(samples, samples_per_bit=samples_per_bit):
         frames = decode_levels(levels, initial_level=initial_level)
         if frames:
