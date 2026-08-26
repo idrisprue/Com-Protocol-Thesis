@@ -238,6 +238,16 @@ No se debe conectar la salida de audio de la computadora directamente al pin
 RXD de la Pico: RXD es una salida digital del MX614. La conexión de prueba debe
 entrar por la entrada analógica del receptor MX614.
 
+### Problema de memoria durante la recepción
+
+Si aparece:
+
+~~~text
+MemoryError: memory allocation failed
+~~~
+
+se estaba intentando guardar demasiadas muestras en una lista de Python. La versión actual de `receive_ax25.py` utiliza un `bytearray`, limita la ventana de captura a 1,5 segundos y procesa una fase de muestreo por vez para reducir el uso de RAM. Hay que volver a copiar a la Pico la versión actualizada de `receive_ax25.py` y `lib/ax25_rx.py`, reiniciar la placa y repetir la prueba.
+
 ## Ejecución de las pruebas en una computadora
 
 La parte modular ubicada en lib/ está preparada para que la lógica del protocolo pueda probarse también con Python normal.
