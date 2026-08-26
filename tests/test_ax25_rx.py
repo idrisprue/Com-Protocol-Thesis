@@ -1,10 +1,12 @@
 import unittest
 
-from lib.ax25 import make_ax25_bitstream, make_ui_frame, nrzi_encode
+from lib.ax25 import ax25_address, ax25_fcs, make_ax25_bitstream, make_ui_frame, nrzi_encode
 from lib.ax25_rx import (
+    CONTROL_SABME,
     bit_unstuff,
     decode_levels,
     nrzi_decode,
+    parse_ax25_frame,
     parse_ui_frame,
 )
 
@@ -39,6 +41,22 @@ class ReceiverTests(unittest.TestCase):
         bitstream = make_ax25_bitstream(bytes(frame), preamble_flags=20, postamble_flags=3)
         levels = nrzi_encode(bitstream, initial_level=1)
         self.assertEqual(decode_levels(levels, initial_level=1), [])
+
+    def test_decode_sabme_as_valid_control_frame(self):
+        frame = bytearray()
+        frame.extend(ax25_address("NQNGND", 0, last=False))
+        frame.extend(ax25_address("UNCO", 3, last=True))
+        frame.append(CONTROL_SABME)
+        frame.extend(ax25_fcs(frame))
+
+        bitstream = make_ax25_bitstream(bytes(frame), preamble_flags=20, postamble_flags=3)
+        levels = nrzi_encode(bitstream, initial_level=1)
+
+        frames = decode_levels(levels, initial_level=1)
+        self.assertEqual(len(frames), 1)
+        packet = parse_ax25_frame(frames[0])
+        self.assertEqual(packet["frame_type"], "SABME")
+        self.assertEqual(packet["information"], b"")
 
 
 if __name__ == "__main__":
