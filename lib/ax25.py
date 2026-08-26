@@ -1,7 +1,7 @@
-"""AX.25 helpers for thesis validation.
+"""Funciones auxiliares AX.25 para validar la tesis.
 
-The functions in this module are hardware-independent on purpose. That keeps
-the protocol steps easy to test on CPython and easy to explain in the thesis.
+Las funciones de este módulo no dependen del hardware. Así, los pasos del
+protocolo se pueden probar fácilmente en CPython y explicar en la tesis.
 """
 
 
@@ -18,13 +18,13 @@ def _pad_callsign(callsign):
 
 
 def ax25_address(callsign, ssid, last=False):
-    """Encode one AX.25 address field entry."""
+    """Codifica una entrada del campo de direcciones AX.25."""
     if not isinstance(callsign, str):
-        raise TypeError("callsign must be a string")
+        raise TypeError("callsign debe ser un texto")
     if not isinstance(ssid, int):
-        raise TypeError("ssid must be an integer")
+        raise TypeError("ssid debe ser un entero")
     if ssid < 0 or ssid > 15:
-        raise ValueError("ssid must be in range 0..15")
+        raise ValueError("ssid debe estar entre 0 y 15")
 
     normalized = _pad_callsign(callsign)
     encoded = bytearray()
@@ -32,7 +32,7 @@ def ax25_address(callsign, ssid, last=False):
     for char in normalized:
         encoded.append(ord(char) << 1)
 
-    # Bits 5 and 6 are set as required by AX.25 address encoding.
+    # Los bits 5 y 6 se establecen según el formato de direcciones AX.25.
     ssid_byte = 0x60 | ((ssid & 0x0F) << 1)
     if last:
         ssid_byte |= 0x01
@@ -42,7 +42,7 @@ def ax25_address(callsign, ssid, last=False):
 
 
 def ax25_fcs(data):
-    """Compute the AX.25 FCS and return it little-endian."""
+    """Calcula el FCS de AX.25 y lo devuelve en formato little-endian."""
     crc = 0xFFFF
 
     for byte in data:
@@ -58,9 +58,9 @@ def ax25_fcs(data):
 
 
 def make_ui_frame(destination, dest_ssid, source, source_ssid, payload):
-    """Build an AX.25 UI frame without flags."""
+    """Construye una trama UI AX.25 sin incluir las banderas."""
     if not isinstance(payload, (bytes, bytearray)):
-        raise TypeError("payload must be bytes or bytearray")
+        raise TypeError("payload debe ser bytes o bytearray")
 
     frame = bytearray()
     frame.extend(ax25_address(destination, dest_ssid, last=False))
@@ -73,7 +73,7 @@ def make_ui_frame(destination, dest_ssid, source, source_ssid, payload):
 
 
 def byte_to_bits_lsb_first(byte):
-    """Return one byte as AX.25 transmission bits, least-significant bit first."""
+    """Devuelve un byte como bits AX.25, empezando por el menos significativo."""
     return [(byte >> bit_index) & 0x01 for bit_index in range(8)]
 
 
@@ -85,7 +85,7 @@ def bytes_to_bits_lsb_first(data):
 
 
 def bit_stuff(bits):
-    """Insert a 0 after five consecutive 1 bits in the frame body."""
+    """Inserta un 0 después de cinco bits 1 consecutivos en el cuerpo."""
     stuffed = []
     consecutive_ones = 0
 
@@ -103,9 +103,9 @@ def bit_stuff(bits):
 
 
 def make_ax25_bitstream(frame, preamble_flags=20, postamble_flags=3):
-    """Build the transmitted bitstream including flags and stuffed frame body."""
+    """Construye el flujo transmitido con banderas y cuerpo con bit-stuffing."""
     if preamble_flags < 0 or postamble_flags < 0:
-        raise ValueError("flag counts must be non-negative")
+        raise ValueError("la cantidad de banderas no puede ser negativa")
 
     flag_bits = byte_to_bits_lsb_first(FLAG_BYTE)
     body_bits = bytes_to_bits_lsb_first(frame)
@@ -121,13 +121,13 @@ def make_ax25_bitstream(frame, preamble_flags=20, postamble_flags=3):
 
 
 def nrzi_encode(bits, initial_level=1):
-    """AX.25 NRZI: 0 toggles the level, 1 keeps the current level."""
+    """NRZI AX.25: el 0 cambia el nivel y el 1 mantiene el nivel actual."""
     level = 1 if initial_level else 0
     levels = []
 
     for bit in bits:
         if bit not in (0, 1):
-            raise ValueError("bits must contain only 0 or 1")
+            raise ValueError("los bits solo pueden ser 0 o 1")
         if bit == 0:
             level ^= 1
         levels.append(level)
