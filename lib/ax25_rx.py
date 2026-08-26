@@ -182,6 +182,79 @@ def parse_ax25_frame(frame):
     return packet
 
 
+def parse_connected_frame(frame, modulo=128):
+    """Analiza tramas U, I y S de una conexión AX.25.
+
+    SABME utiliza módulo 128, por lo que sus tramas I y S tienen un campo de
+    control de dos bytes. SABM utiliza módulo 8 y un control de un byte.
+    """
+    if len(frame) < 17:
+        raise ValueError("la trama AX.25 es demasiado corta")
+    if modulo not in (8, 128):
+        raise ValueError("el módulo AX.25 debe ser 8 o 128")
+
+    addresses, index = _parse_addresses(frame)
+    source, source_ssid = _decode_address(addresses[1])
+    destination, destination_ssid = _decode_address(addresses[0])
+    control = frame[index]
+
+    packet = {
+        "source": source,
+        "source_ssid": source_ssid,
+        "destination": destination,
+        "destination_ssid": destination_ssid,
+        "control": control,
+        "control_bytes": frame[index:index + 2],
+        "information": b"",
+        "fcs": frame[-2:],
+    }
+
+    # Bit 0 = 0 identifica una trama de información I.
+    if (control & 0x01) == 0:
+        if modulo == 128:
+            if index + 4 > len(frame):
+                raise ValueError("trama I extendida incompleta")
+            second_control = frame[index + 1]
+            packet["frame_type"] = "I"
+            packet["send_sequence"] = (control >> 1) & 0x7F
+            packet["receive_sequence"] = (second_control >> 1) & 0x7F
+            packet["poll_final"] = second_control & 0x01
+            packet["information"] = frame[index + 2:-2]
+        else:
+            if index + 3 > len(frame):
+                raise ValueError("trama I incompleta")
+            packet["frame_type"] = "I"
+            packet["send_sequence"] = (control >> 1) & 0x07
+            packet["receive_sequence"] = (control >> 5) & 0x07
+            packet["poll_final"] = (control >> 4) & 0x01
+            packet["information"] = frame[index + 1:-2]
+        return packet
+
+    # Bits 0..1 = 01 identifican una trama supervisoria S.
+    if (control & 0x03) == 0x01:
+        subtype = (control >> 2) & 0x03
+        packet["frame_type"] = ("RR", "RNR", "REJ", "SREJ")[subtype]
+        if modulo == 128:
+            if index + 4 > len(frame):
+                raise ValueError("trama S extendida incompleta")
+            second_control = frame[index + 1]
+            packet["receive_sequence"] = (second_control >> 1) & 0x7F
+            packet["poll_final"] = second_control & 0x01
+        else:
+            packet["receive_sequence"] = (control >> 5) & 0x07
+            packet["poll_final"] = (control >> 4) & 0x01
+        return packet
+
+    # Las tramas U tienen un control de un byte. Se ignora P/F para reconocer
+    # el tipo base de la trama.
+    control_base = control & 0xEF
+    packet["frame_type"] = CONTROL_NAMES.get(
+        control_base, "CONTROL_0x{:02X}".format(control_base)
+    )
+    packet["poll_final"] = (control >> 4) & 0x01
+    return packet
+
+
 def parse_ui_frame(frame):
     """Analiza una trama UI y exige que no sea una trama de control."""
     packet = parse_ax25_frame(frame)
