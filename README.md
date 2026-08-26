@@ -238,6 +238,34 @@ No se debe conectar la salida de audio de la computadora directamente al pin
 RXD de la Pico: RXD es una salida digital del MX614. La conexión de prueba debe
 entrar por la entrada analógica del receptor MX614.
 
+### Diferencia entre UI y SABME
+
+El beacon APRS de telemetría se transmite como una trama `UI`. Su campo de
+información contiene el payload, por ejemplo:
+
+~~~text
+T#001,033,050,025,120,204,00000000
+~~~
+
+EasyTerm puede comenzar una conexión AX.25 enviando una trama `SABME`. Esta
+también es una trama AX.25 válida y tiene FCS, pero es una trama de control:
+no contiene un payload APRS ni el campo PID de una trama UI.
+
+El receptor ahora informa ambos casos:
+
+~~~text
+FCS: OK
+TIPO AX.25: SABME
+RESULTADO: OK - trama AX.25 valida, pero no es un beacon UI/APRS
+~~~
+
+Esto demuestra que la Pico recibió y validó la trama, pero no demuestra todavía
+una comunicación conectada completa. Para eso habría que implementar la
+negociación `SABME → UA`, las tramas de información `I` y las confirmaciones.
+
+Para probar el beacon de telemetría, EasyTerm debe enviar una trama UI/unproto o
+debe utilizarse la configuración `direwolf_prueba.conf`.
+
 ### Problema de memoria durante la recepción
 
 Si aparece:
