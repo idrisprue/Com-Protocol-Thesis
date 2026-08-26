@@ -10,7 +10,7 @@ Actualmente, el repositorio está enfocado en validar la etapa Raspberry Pi Pico
 
 ## Estado actual del proyecto
 
-En esta etapa se está trabajando principalmente sobre el lado de transmisión del protocolo.
+En esta etapa se está trabajando sobre la transmisión y se está incorporando la recepción de tramas AX.25.
 
 El objetivo es:
 
@@ -63,9 +63,11 @@ La placa de circuito impreso fue diseñada utilizando los valores de referencia 
 Com-Protocol-Thesis/
 ├── README.md
 ├── main.py
+├── receive_ax25.py
 ├── lib/
 │   ├── __init__.py
 │   ├── ax25.py
+│   ├── ax25_rx.py
 │   ├── mx614.py
 │   ├── sample_data.py
 │   ├── ticket.py
@@ -78,9 +80,11 @@ Com-Protocol-Thesis/
 - lib/mx614.py: controla los pines del MX614 desde MicroPython.
 - lib/ticket.py: construye el paquete fijo de telemetría de 16 bytes.
 - lib/ax25.py: contiene la lógica de construcción y codificación de tramas AX.25.
+- lib/ax25_rx.py: contiene la lógica de recepción, decodificación NRZI, desbit-stuffing y validación del FCS.
 - lib/transmitter.py: transmite los bits de forma no bloqueante utilizando ticks_us().
 - lib/sample_data.py: contiene registros de telemetría de prueba deterministas.
 - main.py: integra los componentes para realizar las pruebas actuales con la Raspberry Pi Pico.
+- receive_ax25.py: captura la señal RXD del MX614 y prueba la reconstrucción de una trama AX.25.
 
 ## Conjunto de datos de telemetría
 
@@ -132,6 +136,42 @@ Para las pruebas más simples se espera observar:
 Durante la transmisión AX.25, se espera observar el cambio entre ambas frecuencias de acuerdo con los bits codificados de la trama.
 
 La medición con osciloscopio permite validar la modulación del MX614. La recepción de la trama por Direwolf permite validar además la cadena completa de transmisión y recepción externa.
+
+## Recepción de tramas AX.25
+
+El archivo receive_ax25.py permite probar el camino de recepción de la Raspberry Pi Pico:
+
+~~~text
+radio receptor
+→ entrada de recepción del MX614
+→ RXD
+→ GPIO9 de la Pico
+→ decodificación NRZI
+→ eliminación del bit-stuffing
+→ búsqueda de flags
+→ validación del FCS
+→ recuperación del payload
+~~~
+
+Para ejecutar la prueba:
+
+1. conectar el audio de recepción al circuito del MX614;
+2. conectar RXD del MX614 al GP9 de la Pico;
+3. configurar el MX614 en modo RX de 1200 bit/s;
+4. ejecutar receive_ax25.py;
+5. transmitir desde otra radio el paquete de prueba indicado por el programa.
+
+Si todo funciona, la Pico debe mostrar:
+
+~~~text
+FCS: OK
+ORIGEN: UNCO-3
+DESTINO: NQNGND
+PAYLOAD: T#001,033,050,025,120,204,00000000
+RESULTADO: OK - recepción y decodificación AX.25 correctas
+~~~
+
+La clase MX614 utiliza M0 = 0 y M1 = 0 para el modo RX de 1200 bit/s. La entrada CLK del MX614 no es controlada por el código actual, por lo que debe estar conectada al nivel previsto por el esquema y la hoja de datos.
 
 ## Ejecución de las pruebas en una computadora
 
