@@ -6,6 +6,7 @@ valida el FCS de AX.25.
 """
 
 from machine import Pin
+import gc
 
 try:
     from time import ticks_diff, ticks_ms, ticks_us
@@ -23,16 +24,19 @@ except ImportError:
 
 try:
     from lib.mx614 import MX614
-    from lib.ax25_rx import decode_samples, parse_ui_frame
+    from lib.ax25_rx import decode_samples, parse_ax25_frame
 except ImportError:
     from mx614 import MX614
-    from ax25_rx import decode_samples, parse_ui_frame
+    from ax25_rx import decode_samples, parse_ax25_frame
 
 
 BIT_RATE = 1200
 SAMPLES_PER_BIT = 8
 SAMPLE_PERIOD_US = int(1000000 / (BIT_RATE * SAMPLES_PER_BIT))
 CAPTURE_TIMEOUT_MS = 5000
+# Una trama AX.25 de prueba dura mucho menos de dos segundos. Este tiempo
+# limita la cantidad de RAM utilizada después de detectar una portadora.
+CAPTURE_WINDOW_MS = 1500
 DET_ACTIVE_LEVEL = 1
 
 
@@ -45,18 +49,24 @@ def capture_samples(modem):
             return []
 
     print("DET activo: capturando RXD")
-    samples = []
+    # Una lista de Python consume varios bytes por muestra. Un bytearray usa
+    # exactamente un byte por muestra y evita que la lista crezca por etapas.
+    max_samples = (CAPTURE_WINDOW_MS * BIT_RATE * SAMPLES_PER_BIT) // 1000
+    gc.collect()
+    samples = bytearray(max_samples)
+    sample_count = 0
     next_tick = ticks_us()
-    end_tick = next_tick + (CAPTURE_TIMEOUT_MS * 1000)
+    end_tick = next_tick + (CAPTURE_WINDOW_MS * 1000)
     rx_pin = Pin(9, Pin.IN)
 
-    while ticks_diff(ticks_us(), end_tick) < 0:
+    while ticks_diff(ticks_us(), end_tick) < 0 and sample_count < max_samples:
         while ticks_diff(ticks_us(), next_tick) < 0:
             pass
-        samples.append(rx_pin.value())
+        samples[sample_count] = rx_pin.value()
+        sample_count += 1
         next_tick += SAMPLE_PERIOD_US
 
-    return samples
+    return samples[:sample_count]
 
 
 def main():
@@ -87,8 +97,7 @@ def main():
         return
 
     try:
-        packet = parse_ui_frame(frames[0])
-        payload = packet["information"].decode("ascii")
+        packet = parse_ax25_frame(frames[0])
     except Exception as error:
         print("RESULTADO: ERROR - trama encontrada pero no se pudo interpretar:", error)
         return
@@ -96,6 +105,20 @@ def main():
     print("FCS: OK")
     print("ORIGEN:", packet["source"] + "-" + str(packet["source_ssid"]))
     print("DESTINO:", packet["destination"] + "-" + str(packet["destination_ssid"]))
+
+    if packet["frame_type"] != "UI":
+        print("TIPO AX.25:", packet["frame_type"])
+        if packet["frame_type"] == "SABME":
+            print("El emisor esta intentando iniciar una conexion AX.25")
+        print("RESULTADO: OK - trama AX.25 valida, pero no es un beacon UI/APRS")
+        return
+
+    try:
+        payload = packet["information"].decode("ascii")
+    except UnicodeError as error:
+        print("RESULTADO: ERROR - el payload UI no es ASCII:", error)
+        return
+
     print("PAYLOAD:", payload)
     print("RESULTADO: OK - recepcion y decodificacion AX.25 correctas")
 

@@ -64,6 +64,7 @@ Com-Protocol-Thesis/
 ├── README.md
 ├── main.py
 ├── receive_ax25.py
+├── direwolf_prueba.conf
 ├── lib/
 │   ├── __init__.py
 │   ├── ax25.py
@@ -172,6 +173,102 @@ RESULTADO: OK - recepción y decodificación AX.25 correctas
 ~~~
 
 La clase MX614 utiliza M0 = 0 y M1 = 0 para el modo RX de 1200 bit/s. La entrada CLK del MX614 no es controlada por el código actual, por lo que debe estar conectada al nivel previsto por el esquema y la hoja de datos.
+
+## Prueba de recepción usando Direwolf
+
+Direwolf puede generar y transmitir una trama AX.25 de prueba para que la
+Raspberry Pi Pico la reciba. El archivo `direwolf_prueba.conf` contiene esta
+configuración:
+
+~~~text
+origen: UNCO-3
+destino: NQNGND
+información: T#001,033,050,025,120,204,00000000
+frecuencia de datos: AFSK 1200 bit/s
+~~~
+
+### Prueba cableada, sin radio
+
+Esta es la primera prueba recomendada:
+
+1. Conectar la salida de audio de la computadora a la entrada analógica de
+   recepción del circuito MX614, usando el nivel de audio adecuado.
+2. Conectar RXD del MX614 al GP9 de la Pico.
+3. Ejecutar `receive_ax25.py` en la Pico.
+4. Iniciar Direwolf con `direwolf_prueba.conf`.
+5. Verificar que la salida de Direwolf llegue al MX614.
+
+En Windows, desde la carpeta donde está instalado Direwolf:
+
+~~~bat
+direwolf.exe -c direwolf_prueba.conf
+~~~
+
+En Linux o Raspberry Pi:
+
+~~~bash
+direwolf -c direwolf_prueba.conf
+~~~
+
+Direwolf transmitirá el paquete inmediatamente y luego cada 60 segundos. Cuando
+la Pico lo reciba, debe mostrar `FCS: OK` y el payload completo. Esta prueba
+valida Direwolf, el audio AFSK, el demodulador MX614 y la decodificación AX.25
+de la Pico, sin depender de una segunda radio.
+
+### Prueba por radio
+
+Si se utiliza una radio transmisora:
+
+1. Conectar la salida de audio de Direwolf a la entrada de transmisión de la
+   radio.
+2. Configurar en Direwolf el mismo dispositivo de audio y la misma línea de
+   PTT que ya funciona en el montaje actual.
+3. Conectar la radio receptora a la entrada analógica de recepción del MX614.
+4. Ejecutar primero `receive_ax25.py` en la Pico.
+5. Iniciar Direwolf con `direwolf_prueba.conf`.
+6. Detener Direwolf con Ctrl+C después de obtener un resultado correcto.
+
+No se debe conectar la salida de audio de la computadora directamente al pin
+RXD de la Pico: RXD es una salida digital del MX614. La conexión de prueba debe
+entrar por la entrada analógica del receptor MX614.
+
+### Diferencia entre UI y SABME
+
+El beacon APRS de telemetría se transmite como una trama `UI`. Su campo de
+información contiene el payload, por ejemplo:
+
+~~~text
+T#001,033,050,025,120,204,00000000
+~~~
+
+EasyTerm puede comenzar una conexión AX.25 enviando una trama `SABME`. Esta
+también es una trama AX.25 válida y tiene FCS, pero es una trama de control:
+no contiene un payload APRS ni el campo PID de una trama UI.
+
+El receptor ahora informa ambos casos:
+
+~~~text
+FCS: OK
+TIPO AX.25: SABME
+RESULTADO: OK - trama AX.25 valida, pero no es un beacon UI/APRS
+~~~
+
+Esto demuestra que la Pico recibió y validó la trama, pero no demuestra todavía
+una comunicación conectada completa. Para eso habría que implementar la
+negociación `SABME → UA`, las tramas de información `I` y las confirmaciones.
+
+Para probar el beacon de telemetría, EasyTerm debe enviar una trama UI/unproto o
+debe utilizarse la configuración `direwolf_prueba.conf`.
+
+### Problema de memoria durante la recepción
+
+Si aparece:
+
+~~~text
+MemoryError: memory allocation failed
+~~~
+
+se estaba intentando guardar demasiadas muestras en una lista de Python. La versión actual de `receive_ax25.py` utiliza un `bytearray`, limita la ventana de captura a 1,5 segundos y procesa una fase de muestreo por vez para reducir el uso de RAM. Hay que volver a copiar a la Pico la versión actualizada de `receive_ax25.py` y `lib/ax25_rx.py`, reiniciar la placa y repetir la prueba.
 
 ## Ejecución de las pruebas en una computadora
 
