@@ -6,6 +6,7 @@ valida el FCS de AX.25.
 """
 
 from machine import Pin
+import gc
 
 try:
     from time import ticks_diff, ticks_ms, ticks_us
@@ -33,6 +34,9 @@ BIT_RATE = 1200
 SAMPLES_PER_BIT = 8
 SAMPLE_PERIOD_US = int(1000000 / (BIT_RATE * SAMPLES_PER_BIT))
 CAPTURE_TIMEOUT_MS = 5000
+# Una trama AX.25 de prueba dura mucho menos de dos segundos. Este tiempo
+# limita la cantidad de RAM utilizada después de detectar una portadora.
+CAPTURE_WINDOW_MS = 1500
 DET_ACTIVE_LEVEL = 1
 
 
@@ -45,18 +49,24 @@ def capture_samples(modem):
             return []
 
     print("DET activo: capturando RXD")
-    samples = []
+    # Una lista de Python consume varios bytes por muestra. Un bytearray usa
+    # exactamente un byte por muestra y evita que la lista crezca por etapas.
+    max_samples = (CAPTURE_WINDOW_MS * BIT_RATE * SAMPLES_PER_BIT) // 1000
+    gc.collect()
+    samples = bytearray(max_samples)
+    sample_count = 0
     next_tick = ticks_us()
-    end_tick = next_tick + (CAPTURE_TIMEOUT_MS * 1000)
+    end_tick = next_tick + (CAPTURE_WINDOW_MS * 1000)
     rx_pin = Pin(9, Pin.IN)
 
-    while ticks_diff(ticks_us(), end_tick) < 0:
+    while ticks_diff(ticks_us(), end_tick) < 0 and sample_count < max_samples:
         while ticks_diff(ticks_us(), next_tick) < 0:
             pass
-        samples.append(rx_pin.value())
+        samples[sample_count] = rx_pin.value()
+        sample_count += 1
         next_tick += SAMPLE_PERIOD_US
 
-    return samples
+    return samples[:sample_count]
 
 
 def main():
