@@ -1,8 +1,8 @@
-"""Receive and decode one AX.25 frame using the MX614 RX path.
+"""Recibe y decodifica una trama AX.25 usando la entrada RX del MX614.
 
-Run this on the Raspberry Pi Pico while another station transmits the known
-test packet. The program captures RXD, decodes NRZI/bit-stuffing and validates
-the AX.25 FCS.
+Ejecutar en la Raspberry Pi Pico mientras otra estación transmite el paquete
+de prueba conocido. El programa captura RXD, decodifica NRZI/bit-stuffing y
+valida el FCS de AX.25.
 """
 
 from machine import Pin
@@ -37,7 +37,7 @@ DET_ACTIVE_LEVEL = 1
 
 
 def capture_samples(modem):
-    """Capture RXD while DET indicates received energy."""
+    """Captura RXD mientras DET indica que hay energía recibida."""
     print("Esperando DET activo...")
     deadline = ticks_ms() + CAPTURE_TIMEOUT_MS
     while modem.read_det() != DET_ACTIVE_LEVEL:
